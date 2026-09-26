@@ -1,0 +1,2231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SOLATRO — Solo Poker Solitaire</title>
+<style>
+  :root {
+    --ink: #191816;
+    --paper: #f5f0e5;
+    --paper-2: #fffdf7;
+    --felt: #244d3c;
+    --felt-dark: #153428;
+    --red: #bb2f2f;
+    --gold: #d8aa43;
+    --muted: #6e685e;
+    --shadow: rgba(13, 19, 16, .24);
+    --radius: 18px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { min-height: 100%; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    background:
+      radial-gradient(circle at 18% 12%, rgba(255,255,255,.06), transparent 24%),
+      radial-gradient(circle at 84% 82%, rgba(255,255,255,.05), transparent 28%),
+      linear-gradient(145deg, var(--felt), var(--felt-dark));
+    font-family: ui-rounded, "Trebuchet MS", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: .12;
+    background-image:
+      repeating-linear-gradient(9deg, rgba(255,255,255,.11) 0 1px, transparent 1px 7px),
+      repeating-linear-gradient(93deg, rgba(0,0,0,.06) 0 1px, transparent 1px 9px);
+    mix-blend-mode: overlay;
+  }
+
+  button, input { font: inherit; }
+  button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+  button:focus-visible, .card:focus-visible, input:focus-visible {
+    outline: 4px solid #fff3a6;
+    outline-offset: 3px;
+  }
+  .sr-only {
+    position: absolute !important;
+    width: 1px !important; height: 1px !important;
+    padding: 0 !important; margin: -1px !important;
+    overflow: hidden !important; clip: rect(0,0,0,0) !important;
+    white-space: nowrap !important; border: 0 !important;
+  }
+
+  .app-shell {
+    width: min(1460px, calc(100% - 24px));
+    margin: 12px auto 26px;
+  }
+
+  .topbar {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 18px;
+    align-items: center;
+    background: var(--paper);
+    border: 3px solid var(--ink);
+    border-radius: 22px;
+    padding: 12px 16px;
+    box-shadow: 7px 8px 0 rgba(0,0,0,.22);
+    transform: rotate(-.08deg);
+  }
+
+  .logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-family: "Comic Sans MS", "Bradley Hand", cursive;
+    font-weight: 900;
+    letter-spacing: .02em;
+    font-size: clamp(28px, 4vw, 48px);
+    line-height: .9;
+    white-space: nowrap;
+  }
+
+  .logo-card {
+    display: inline-grid;
+    place-items: center;
+    width: .78em;
+    height: 1.08em;
+    background: white;
+    border: .09em solid var(--ink);
+    border-radius: .08em;
+    transform: rotate(-7deg);
+    box-shadow: 2px 2px 0 var(--ink);
+    font-size: .7em;
+  }
+
+  .top-stats {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(78px, 1fr));
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .stat {
+    background: rgba(255,255,255,.5);
+    border: 2px solid var(--ink);
+    border-radius: 13px;
+    padding: 7px 9px 6px;
+    text-align: center;
+    box-shadow: inset 0 -2px 0 rgba(0,0,0,.05);
+  }
+
+  .stat-label {
+    display: block;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+
+  .stat-value {
+    display: block;
+    margin-top: 1px;
+    font-size: 21px;
+    font-weight: 950;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .top-actions { display: flex; gap: 8px; }
+
+  .icon-btn, .small-btn, .primary-btn, .secondary-btn, .token-btn, .shop-btn {
+    border: 2px solid var(--ink);
+    color: var(--ink);
+    background: var(--paper-2);
+    border-radius: 12px;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 3px 3px 0 var(--ink);
+    transition: transform .13s ease, box-shadow .13s ease, opacity .13s ease, background .13s ease;
+  }
+
+  .icon-btn { width: 44px; height: 40px; font-size: 19px; }
+  .small-btn { padding: 7px 10px; font-size: 13px; }
+  .primary-btn { padding: 12px 18px; background: #ffef9a; font-size: 16px; }
+  .secondary-btn { padding: 12px 18px; font-size: 16px; }
+  .token-btn { width: 100%; padding: 9px 9px; text-align: left; }
+  .shop-btn { padding: 9px 12px; }
+
+  button:hover:not(:disabled) { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--ink); }
+  button:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+  button:disabled { opacity: .42; cursor: not-allowed; box-shadow: 1px 1px 0 var(--ink); }
+
+  .main-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 310px;
+    gap: 14px;
+    margin-top: 14px;
+  }
+
+  .table-panel {
+    min-height: 700px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+    border: 3px solid rgba(245,240,229,.75);
+    border-radius: 24px;
+    background:
+      radial-gradient(circle at 50% 45%, rgba(255,255,255,.08), transparent 35%),
+      rgba(7, 34, 26, .22);
+    box-shadow: inset 0 0 80px rgba(0,0,0,.16), 0 16px 40px rgba(0,0,0,.18);
+    padding: 20px;
+  }
+
+  .table-panel::after {
+    content: "";
+    position: absolute;
+    inset: 12px;
+    border: 2px dashed rgba(245,240,229,.28);
+    border-radius: 18px;
+    pointer-events: none;
+  }
+
+  .round-banner {
+    position: relative;
+    z-index: 2;
+    align-self: center;
+    text-align: center;
+    background: var(--paper);
+    border: 2px solid var(--ink);
+    border-radius: 15px;
+    padding: 8px 16px;
+    box-shadow: 4px 4px 0 rgba(0,0,0,.23);
+    transform: rotate(-.6deg);
+  }
+
+  .round-banner strong {
+    font-family: "Comic Sans MS", "Bradley Hand", cursive;
+    font-size: 21px;
+  }
+
+  .round-banner span { display: block; margin-top: 2px; font-size: 12px; font-weight: 800; color: var(--muted); }
+
+  .play-history {
+    position: relative;
+    z-index: 1;
+    min-height: 165px;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 26px 8px 8px;
+  }
+
+  .play-slip {
+    width: min(168px, 30%);
+    min-height: 102px;
+    background: var(--paper);
+    border: 2px solid var(--ink);
+    border-radius: 6px;
+    padding: 9px 10px;
+    transform: rotate(var(--tilt, 0deg));
+    box-shadow: 4px 5px 0 rgba(0,0,0,.2);
+  }
+
+  .play-slip.empty { opacity: .38; border-style: dashed; box-shadow: none; }
+  .play-slip .tiny { font-size: 10px; font-weight: 900; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
+  .play-slip .hand-name { font-family: "Comic Sans MS", cursive; font-weight: 900; font-size: 18px; margin-top: 4px; }
+  .play-slip .hand-score { font-size: 25px; font-weight: 950; margin-top: 5px; }
+  .play-slip .mini-cards { margin-top: 5px; font-size: 13px; font-weight: 800; color: #37332d; }
+
+  .hand-zone {
+    position: relative;
+    z-index: 3;
+    margin-top: auto;
+    padding-top: 20px;
+  }
+
+  .hand-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin: 0 auto 12px;
+    max-width: 1040px;
+    color: var(--paper);
+  }
+
+  .hand-meta h2 {
+    margin: 0;
+    font-family: "Comic Sans MS", cursive;
+    letter-spacing: .04em;
+    font-size: 22px;
+  }
+
+  .hand-tools { display: flex; flex-wrap: wrap; gap: 7px; }
+  .hand-tools .small-btn { background: var(--paper); }
+
+  .cards {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    min-height: 205px;
+    padding: 20px 18px 6px;
+    overflow: visible;
+  }
+
+  .card {
+    position: relative;
+    flex: 0 0 clamp(72px, 8.1vw, 112px);
+    aspect-ratio: 2.5 / 3.5;
+    margin-left: clamp(-22px, -1.8vw, -11px);
+    background: #fffefa;
+    border: 2px solid #171717;
+    border-radius: 10px;
+    box-shadow: 6px 8px 13px rgba(0,0,0,.24);
+    cursor: pointer;
+    user-select: none;
+    transition: transform .16s ease, box-shadow .16s ease, filter .16s ease;
+    transform: translateY(var(--lift, 0px)) rotate(var(--rot, 0deg));
+    color: #1d1b19;
+  }
+  .card:first-child { margin-left: 0; }
+  .card.red { color: var(--red); }
+  @media (hover: hover) and (pointer: fine) {
+    .card:hover { --lift: -9px; box-shadow: 7px 13px 18px rgba(0,0,0,.27); }
+  }
+  .card:active { --lift: -5px; }
+  .card.selected {
+    --lift: -26px;
+    outline: 4px solid #ffe870;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 5px rgba(0,0,0,.16), 8px 16px 24px rgba(0,0,0,.3);
+  }
+  .card.disabled-card { filter: grayscale(.6); opacity: .72; }
+
+  .corner {
+    position: absolute;
+    top: 7px;
+    left: 7px;
+    display: grid;
+    line-height: .9;
+    text-align: center;
+    font-weight: 950;
+    font-size: clamp(18px, 2vw, 25px);
+  }
+  .corner.bottom { top: auto; left: auto; bottom: 7px; right: 7px; transform: rotate(180deg); }
+  .corner .suit { font-size: .78em; margin-top: 3px; }
+  .pip {
+    position: absolute;
+    inset: 23% 12%;
+    display: grid;
+    place-items: center;
+    font-size: clamp(38px, 5.5vw, 70px);
+    opacity: .92;
+  }
+  .pip.face {
+    font-family: Georgia, serif;
+    font-size: clamp(27px, 4vw, 50px);
+    font-weight: 900;
+    border: 2px solid currentColor;
+    border-radius: 50%;
+    width: 58%;
+    height: 52%;
+    place-self: center;
+  }
+
+  .action-tray {
+    position: relative;
+    z-index: 4;
+    margin: 16px auto 0;
+    width: min(940px, 100%);
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .preview-box {
+    min-width: 0;
+    background: var(--paper);
+    border: 2px solid var(--ink);
+    border-radius: 14px;
+    padding: 9px 12px;
+    box-shadow: 4px 4px 0 rgba(0,0,0,.2);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .preview-copy { min-width: 0; }
+  .preview-kicker { font-size: 10px; font-weight: 950; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; }
+  .preview-name { font-family: "Comic Sans MS", cursive; font-size: 19px; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .preview-score { font-size: 27px; font-weight: 950; white-space: nowrap; }
+  .preview-outcome { margin-top: 2px; font-size: 11px; font-weight: 850; color: var(--muted); }
+  .preview-box.clears { background: #fff4ad; box-shadow: 4px 4px 0 rgba(0,0,0,.2), 0 0 0 3px rgba(255,239,154,.22); }
+  .save-caption { margin-top: 2px; font-size: 10px; font-weight: 800; opacity: .62; }
+
+  .action-tray .primary-btn, .action-tray .secondary-btn { min-width: 140px; }
+  .discard-btn { background: #f3d6d1; }
+
+  .side-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .paper-card {
+    background: var(--paper);
+    border: 3px solid var(--ink);
+    border-radius: var(--radius);
+    padding: 14px;
+    box-shadow: 6px 7px 0 rgba(0,0,0,.22);
+  }
+
+  .paper-card h3 {
+    margin: 0 0 9px;
+    font-family: "Comic Sans MS", cursive;
+    font-size: 21px;
+  }
+
+  .joker-bank {
+    display: grid;
+    grid-template-columns: 70px 1fr;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .joker-card {
+    height: 95px;
+    background: #fff;
+    border: 2px solid var(--ink);
+    border-radius: 9px;
+    display: grid;
+    place-items: center;
+    font-family: "Comic Sans MS", cursive;
+    font-weight: 950;
+    font-size: 15px;
+    transform: rotate(-5deg);
+    box-shadow: 3px 4px 0 rgba(0,0,0,.18);
+    text-align: center;
+  }
+  .joker-card.empty { opacity: .28; border-style: dashed; box-shadow: none; }
+
+  .joker-toggle {
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 900;
+  }
+  .joker-toggle input { width: 18px; height: 18px; accent-color: #191816; }
+
+  .token-list { display: grid; gap: 7px; }
+  .token-btn { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 6px; }
+  .token-btn .token-desc { display: block; color: var(--muted); font-size: 10px; font-weight: 800; margin-top: 2px; }
+  .token-btn .owned-dot { font-size: 18px; }
+  .token-btn.armed { background: #ffef9a; }
+
+  .log {
+    max-height: 210px;
+    overflow: auto;
+    padding-right: 4px;
+    scrollbar-width: thin;
+  }
+  .log-entry {
+    padding: 7px 0;
+    border-top: 1px dashed #a99f91;
+    font-size: 12px;
+    line-height: 1.3;
+  }
+  .log-entry:first-child { border-top: 0; padding-top: 0; }
+  .log-entry strong { font-weight: 950; }
+
+  .progress-rail {
+    height: 16px;
+    background: rgba(0,0,0,.12);
+    border: 2px solid var(--ink);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .progress-fill { height: 100%; width: 0; background: repeating-linear-gradient(45deg, #e5b94f 0 9px, #f2cf74 9px 18px); transition: width .28s ease; }
+  .progress-caption { margin-top: 6px; font-size: 12px; font-weight: 800; color: var(--muted); }
+
+  .overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: grid;
+    place-items: center;
+    padding: 18px;
+    background: rgba(7, 15, 12, .72);
+    backdrop-filter: blur(4px);
+  }
+  .overlay.hidden { display: none; }
+  .overlay.active-modal { z-index: 95; }
+
+  .modal {
+    width: min(760px, 100%);
+    max-height: min(88vh, 860px);
+    overflow: auto;
+    background: var(--paper);
+    border: 4px solid var(--ink);
+    border-radius: 22px;
+    box-shadow: 11px 13px 0 rgba(0,0,0,.28);
+    padding: 20px;
+    position: relative;
+  }
+  .modal.wide { width: min(990px, 100%); }
+  .modal h1, .modal h2, .modal h3 { font-family: "Comic Sans MS", cursive; }
+  .modal h1 { font-size: clamp(37px, 7vw, 66px); margin: 4px 0 4px; }
+  .modal h2 { font-size: 28px; margin: 3px 0 8px; }
+  .modal p { line-height: 1.5; }
+
+  .intro-grid {
+    display: grid;
+    grid-template-columns: 1.15fr .85fr;
+    gap: 18px;
+    align-items: center;
+  }
+  .doodle-card {
+    border: 2px dashed var(--ink);
+    border-radius: 16px;
+    padding: 16px;
+    background: rgba(255,255,255,.4);
+    transform: rotate(.6deg);
+  }
+  .intro-points { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin: 14px 0 18px; }
+  .intro-point { border: 2px solid var(--ink); border-radius: 12px; padding: 9px; text-align: center; background: #fffaf0; }
+  .intro-point strong { font-size: 19px; display: block; }
+  .intro-point span { font-size: 10px; color: var(--muted); font-weight: 900; text-transform: uppercase; letter-spacing: .08em; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; margin-top: 14px; }
+
+  .shop-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 12px;
+  }
+  .credits {
+    border: 2px solid var(--ink);
+    background: #ffef9a;
+    border-radius: 12px;
+    padding: 8px 11px;
+    font-weight: 950;
+    font-size: 20px;
+    white-space: nowrap;
+    box-shadow: 3px 3px 0 var(--ink);
+  }
+
+  .shop-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .shop-item {
+    border: 2px solid var(--ink);
+    border-radius: 14px;
+    padding: 11px;
+    background: #fffaf0;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 9px;
+    align-items: center;
+  }
+  .shop-item h4 { margin: 0; font-family: "Comic Sans MS", cursive; font-size: 18px; }
+  .shop-item p { margin: 2px 0 0; font-size: 11px; color: var(--muted); line-height: 1.35; }
+  .cost { font-weight: 950; font-size: 12px; margin-top: 4px; }
+  .shop-btn { min-width: 83px; }
+  .shop-btn.bought { background: #dfecd8; }
+
+  .score-table {
+    width: 100%; border-collapse: collapse; font-size: 13px;
+  }
+  .score-table th, .score-table td { border-bottom: 1px dashed #9a9184; padding: 6px 4px; text-align: left; }
+  .score-table th:last-child, .score-table td:last-child { text-align: right; font-weight: 950; }
+
+  .rules-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  .rules-col { border: 2px solid var(--ink); border-radius: 14px; padding: 12px; background: #fffaf0; }
+  .rules-col h3 { margin-top: 0; }
+  .rules-col ul { padding-left: 19px; margin-bottom: 0; }
+  .rules-col li { margin: 5px 0; line-height: 1.35; font-size: 12px; }
+
+  .game-over-rank {
+    display: inline-block;
+    margin: 6px 0 10px;
+    padding: 7px 12px;
+    border: 2px solid var(--ink);
+    border-radius: 12px;
+    background: #ffef9a;
+    font-family: "Comic Sans MS", cursive;
+    font-size: 20px;
+    font-weight: 950;
+    transform: rotate(-1deg);
+  }
+
+  .toast-stack {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    z-index: 80;
+    display: grid;
+    gap: 8px;
+    width: min(360px, calc(100% - 32px));
+    pointer-events: none;
+  }
+  .toast {
+    background: var(--paper);
+    border: 2px solid var(--ink);
+    border-radius: 12px;
+    padding: 10px 12px;
+    box-shadow: 4px 5px 0 rgba(0,0,0,.24);
+    font-size: 13px;
+    font-weight: 800;
+    animation: toast-in .22s ease both;
+  }
+  @keyframes toast-in { from { opacity: 0; transform: translateY(10px) rotate(1deg); } to { opacity: 1; transform: translateY(0) rotate(-.2deg); } }
+
+  .burst {
+    position: fixed;
+    pointer-events: none;
+    z-index: 70;
+    width: 10px;
+    height: 10px;
+    border: 2px solid #fff4a8;
+    border-radius: 50%;
+    animation: burst .8s ease-out forwards;
+  }
+  @keyframes burst { to { transform: translate(var(--dx), var(--dy)) rotate(180deg) scale(.3); opacity: 0; } }
+
+  .hidden { display: none !important; }
+
+  .mobile-pocket-toggle { display: none; }
+  .mobile-power-contents { display: contents; }
+
+  @media (max-width: 1080px) {
+    .main-grid { grid-template-columns: 1fr; }
+    .side-panel { display: grid; grid-template-columns: repeat(3, 1fr); }
+    .paper-card.log-card { grid-column: span 3; }
+    .table-panel { min-height: 660px; }
+    .topbar { grid-template-columns: 1fr auto; }
+    .logo { grid-row: 1; }
+    .top-stats { grid-row: 2; grid-column: 1 / -1; }
+  }
+
+  @media (max-width: 760px), (max-width: 950px) and (max-height: 500px) {
+    html, body { height: 100%; height: 100dvh; overflow: hidden; }
+    body { overscroll-behavior: none; }
+
+    .app-shell {
+      width: 100%;
+      height: 100dvh;
+      margin: 0;
+      padding: 5px 5px 6px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .topbar {
+      flex: 0 0 auto;
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-rows: 44px 36px;
+      gap: 4px 6px;
+      border-width: 2px;
+      border-radius: 15px;
+      padding: 5px 7px 6px;
+      box-shadow: 3px 4px 0 rgba(0,0,0,.2);
+      transform: none;
+    }
+    .logo {
+      min-width: 0;
+      grid-row: 1;
+      font-size: clamp(24px, 7.4vw, 31px);
+      line-height: 1;
+      gap: 4px;
+    }
+    .top-actions { gap: 4px; }
+    .icon-btn {
+      width: 42px;
+      height: 42px;
+      min-width: 42px;
+      min-height: 42px;
+      border-radius: 11px;
+      border-width: 2px;
+      box-shadow: 2px 2px 0 var(--ink);
+      font-size: 17px;
+    }
+    .top-stats {
+      grid-row: 2;
+      grid-column: 1 / -1;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 3px;
+    }
+    .stat {
+      min-width: 0;
+      height: 34px;
+      padding: 2px 2px;
+      border-width: 1.5px;
+      border-radius: 9px;
+      display: grid;
+      grid-template-columns: 1fr;
+      align-content: center;
+      line-height: 1;
+    }
+    .stat-label { font-size: 7px; letter-spacing: .055em; }
+    .stat-value { margin-top: 2px; font-size: 15px; }
+
+    .main-grid {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: block;
+      margin-top: 6px;
+      position: relative;
+    }
+
+    .table-panel {
+      height: 100%;
+      min-height: 0;
+      padding: 8px 5px 59px;
+      border-width: 2px;
+      border-radius: 16px;
+      box-shadow: inset 0 0 44px rgba(0,0,0,.13);
+      overflow: hidden;
+    }
+    .table-panel::after { inset: 7px; border-width: 1.5px; border-radius: 12px; }
+
+    .round-banner {
+      flex: 0 0 auto;
+      min-width: min(280px, 83vw);
+      border-width: 1.5px;
+      border-radius: 11px;
+      padding: 4px 11px 5px;
+      box-shadow: 2px 2px 0 rgba(0,0,0,.22);
+      transform: rotate(-.25deg);
+    }
+    .round-banner strong { font-size: 16px; line-height: 1; }
+    .round-banner span {
+      margin-top: 2px;
+      font-size: 9px;
+      line-height: 1.15;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .play-history {
+      flex: 0 0 58px;
+      min-height: 58px;
+      height: 58px;
+      padding: 7px 7px 2px;
+      gap: 4px;
+      align-items: stretch;
+    }
+    .play-slip {
+      width: auto;
+      flex: 1 1 0;
+      min-width: 0;
+      min-height: 0;
+      height: 49px;
+      padding: 4px 5px;
+      border-width: 1.5px;
+      border-radius: 5px;
+      box-shadow: 2px 2px 0 rgba(0,0,0,.16);
+      overflow: hidden;
+    }
+    .play-slip .tiny { font-size: 7px; letter-spacing: .06em; }
+    .play-slip .hand-name {
+      margin-top: 1px !important;
+      font-size: 10px;
+      line-height: 1.05;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .play-slip .hand-score { margin-top: 0; font-size: 14px; line-height: 1; }
+    .play-slip .mini-cards { display: none; }
+
+    .hand-zone {
+      flex: 1 1 auto;
+      min-height: 0;
+      margin-top: 0;
+      padding: 2px 3px 0;
+      display: grid;
+      grid-template-rows: 45px minmax(112px, 164px) auto;
+      align-content: end;
+    }
+
+    .hand-meta {
+      width: 100%;
+      max-width: none;
+      margin: 0;
+      padding: 1px 5px;
+      gap: 5px;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: center;
+    }
+    .hand-meta > div:first-child { min-width: 56px; }
+    .hand-meta h2 { display: none; }
+    #deckCaption {
+      font-size: 8px !important;
+      line-height: 1.18;
+      max-width: 62px;
+    }
+    .save-caption { display: none; }
+    .hand-tools {
+      min-width: 0;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 3px;
+    }
+    .small-btn {
+      min-width: 0;
+      min-height: 40px;
+      height: 40px;
+      padding: 3px 2px;
+      border-radius: 9px;
+      border-width: 1.5px;
+      box-shadow: 2px 2px 0 var(--ink);
+      font-size: 10px;
+      white-space: nowrap;
+    }
+
+    .cards {
+      --card-w: clamp(60px, 18vw, 74px);
+      width: 100%;
+      min-height: 112px;
+      height: 100%;
+      max-height: 164px;
+      padding: 20px 3px 4px;
+      justify-content: center;
+      align-items: flex-end;
+      overflow: visible;
+    }
+    .card {
+      flex: 0 0 var(--card-w);
+      width: var(--card-w);
+      margin-left: calc(var(--card-w) * -.45);
+      border-width: 1.5px;
+      border-radius: 8px;
+      box-shadow: 3px 5px 8px rgba(0,0,0,.23);
+    }
+    .card:first-child { margin-left: 0; }
+    .card.selected {
+      --lift: -15px;
+      outline-width: 3px;
+      outline-offset: 1px;
+      box-shadow: 0 0 0 3px rgba(0,0,0,.14), 4px 8px 11px rgba(0,0,0,.28);
+    }
+    .corner { top: 4px; left: 4px; font-size: clamp(14px, 4vw, 18px); }
+    .corner.bottom { bottom: 4px; right: 4px; }
+    .pip { font-size: clamp(30px, 10vw, 43px); }
+    .pip.face { font-size: clamp(22px, 7vw, 30px); border-width: 1.5px; }
+
+    .action-tray {
+      width: 100%;
+      margin: 4px auto 0;
+      padding: 0 3px 2px;
+      position: static;
+      grid-template-columns: .9fr 1.1fr;
+      grid-template-rows: 46px 44px;
+      gap: 4px;
+      background: transparent;
+      backdrop-filter: none;
+      box-shadow: none;
+    }
+    .preview-box {
+      grid-column: 1 / -1;
+      min-height: 46px;
+      padding: 4px 8px;
+      border-width: 1.5px;
+      border-radius: 10px;
+      box-shadow: 2px 2px 0 rgba(0,0,0,.2);
+    }
+    .preview-kicker { display: none; }
+    .preview-name { font-size: 14px; line-height: 1.05; }
+    .preview-outcome {
+      max-width: 76vw;
+      margin-top: 1px;
+      font-size: 8px;
+      line-height: 1.15;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .preview-score { font-size: 21px; }
+    .action-tray .primary-btn, .action-tray .secondary-btn {
+      min-width: 0;
+      min-height: 44px;
+      height: 44px;
+      padding: 6px 7px;
+      border-radius: 10px;
+      font-size: 13px;
+      box-shadow: 2px 2px 0 var(--ink);
+    }
+
+    /* Secondary information becomes an in-place game drawer instead of a page-long sidebar. */
+    .side-panel {
+      position: fixed;
+      z-index: 35;
+      left: 5px;
+      right: 5px;
+      bottom: 5px;
+      display: block;
+      max-height: min(58dvh, 460px);
+      border: 2px solid var(--ink);
+      border-radius: 14px;
+      background: var(--paper);
+      box-shadow: 4px 5px 0 rgba(0,0,0,.28), 0 -10px 35px rgba(0,0,0,.18);
+      overflow: hidden;
+      transform: translateY(calc(100% - 50px));
+      transition: transform .2s ease;
+    }
+    .side-panel.mobile-open { transform: translateY(0); }
+    .mobile-pocket-toggle {
+      width: 100%;
+      height: 48px;
+      min-height: 48px;
+      display: grid;
+      grid-template-columns: 26px 1fr 26px;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border: 0;
+      border-radius: 0;
+      background: #ffef9a;
+      color: var(--ink);
+      box-shadow: none;
+      font-weight: 950;
+      cursor: pointer;
+      text-align: left;
+    }
+    .mobile-pocket-toggle:hover:not(:disabled), .mobile-pocket-toggle:active:not(:disabled) {
+      transform: none;
+      box-shadow: none;
+    }
+    .mobile-pocket-icon { font-size: 19px; text-align: center; }
+    .mobile-pocket-summary {
+      min-width: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      font-size: 12px;
+    }
+    .mobile-pocket-chevron { font-size: 18px; text-align: center; transition: transform .2s ease; }
+    .side-panel.mobile-open .mobile-pocket-chevron { transform: rotate(180deg); }
+    .mobile-power-contents {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 6px;
+      max-height: calc(min(58dvh, 460px) - 48px);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding: 6px;
+      scrollbar-width: thin;
+    }
+    .side-panel .progress-card, .side-panel .log-card { display: none; }
+    .side-panel .paper-card {
+      padding: 7px;
+      border-width: 1.5px;
+      border-radius: 10px;
+      box-shadow: none;
+    }
+    .side-panel .paper-card h3 {
+      margin: 0 0 5px;
+      font-size: 14px;
+    }
+    .joker-bank {
+      grid-template-columns: 46px 1fr;
+      gap: 7px;
+      min-height: 50px;
+    }
+    .joker-card {
+      width: 42px;
+      height: 50px;
+      border-width: 1.5px;
+      border-radius: 6px;
+      font-size: 8px;
+      box-shadow: 2px 2px 0 rgba(0,0,0,.14);
+    }
+    #jokerText { display: none; }
+    .joker-toggle {
+      margin-top: 0;
+      min-height: 44px;
+      font-size: 11px;
+      line-height: 1.1;
+    }
+    .token-list {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 4px;
+    }
+    .token-btn {
+      min-width: 0;
+      min-height: 44px;
+      padding: 4px 5px;
+      border-width: 1.5px;
+      border-radius: 8px;
+      box-shadow: 1.5px 1.5px 0 var(--ink);
+      font-size: 9px;
+      line-height: 1.05;
+    }
+    .token-btn .token-desc { display: none; }
+    .token-btn .owned-dot { font-size: 14px; }
+
+    .toast-stack {
+      left: 10px;
+      right: 10px;
+      bottom: 60px;
+      width: auto;
+      gap: 5px;
+    }
+    .toast { padding: 7px 9px; font-size: 11px; border-radius: 9px; }
+
+    .intro-grid, .rules-grid { grid-template-columns: 1fr; }
+    .intro-grid .doodle-card { display: none; }
+    .shop-grid { grid-template-columns: 1fr; }
+    .overlay { padding: 8px; }
+    .modal {
+      max-height: calc(100dvh - 16px);
+      padding: 13px;
+      border-width: 3px;
+      border-radius: 16px;
+    }
+    .modal h1 { font-size: clamp(34px, 12vw, 52px); }
+  }
+
+  @media (max-width: 760px) and (max-height: 720px) {
+    .topbar { grid-template-rows: 40px 31px; padding-top: 3px; padding-bottom: 4px; }
+    .icon-btn { width: 39px; height: 39px; min-width: 39px; min-height: 39px; }
+    .stat { height: 29px; }
+    .round-banner { padding-top: 3px; padding-bottom: 3px; }
+    .play-history { flex-basis: 50px; min-height: 50px; height: 50px; padding-top: 5px; }
+    .play-slip { height: 43px; }
+    .play-slip .hand-score { font-size: 12px; }
+    .hand-zone { grid-template-rows: 40px minmax(100px, 1fr) auto; }
+    .small-btn { min-height: 36px; height: 36px; font-size: 9px; }
+    .cards { min-height: 100px; max-height: 135px; padding-top: 16px; --card-w: clamp(56px, 17vw, 68px); }
+    .action-tray { grid-template-rows: 42px 40px; }
+    .preview-box { min-height: 42px; }
+    .action-tray .primary-btn, .action-tray .secondary-btn { min-height: 40px; height: 40px; }
+    .table-panel { padding-bottom: 55px; }
+    .mobile-pocket-toggle { height: 45px; min-height: 45px; }
+    .side-panel { transform: translateY(calc(100% - 47px)); }
+  }
+
+  @media (max-width: 950px) and (max-height: 500px) and (orientation: landscape) {
+    .topbar {
+      grid-template-columns: auto minmax(0,1fr) auto;
+      grid-template-rows: 42px;
+    }
+    .logo { grid-column: 1; grid-row: 1; font-size: 23px; }
+    .top-stats { grid-column: 2; grid-row: 1; }
+    .top-actions { grid-column: 3; grid-row: 1; }
+    .stat { height: 34px; }
+    .table-panel { padding-top: 5px; }
+    .round-banner { position: absolute; left: 12px; top: 8px; min-width: 150px; padding: 3px 8px; }
+    .round-banner span { display: none; }
+    .play-history { margin-left: 164px; flex-basis: 44px; min-height: 44px; height: 44px; padding-top: 1px; }
+    .play-slip { height: 40px; }
+    .hand-zone { grid-template-rows: 38px minmax(90px,1fr) 84px; }
+    .cards { max-height: 118px; min-height: 90px; --card-w: clamp(54px, 9.2vw, 70px); }
+    .action-tray { grid-template-rows: 38px 40px; }
+    .preview-box { min-height: 38px; }
+    .action-tray .primary-btn, .action-tray .secondary-btn { min-height: 40px; height: 40px; }
+  }
+
+  @media (pointer: coarse) {
+    .icon-btn { min-width: 44px; min-height: 44px; width: 44px; height: 44px; }
+    .small-btn, .primary-btn, .secondary-btn, .shop-btn, .token-btn { min-height: 44px; }
+    .joker-toggle input { width: 24px; height: 24px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
+    .card { transform: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <header class="topbar">
+    <div class="logo" aria-label="Solatro">SOL<span class="logo-card">A♠</span>TRO</div>
+    <div class="top-stats" aria-label="Game stats">
+      <div class="stat"><span class="stat-label">Round</span><span class="stat-value" id="roundStat">1</span></div>
+      <div class="stat"><span class="stat-label">Target</span><span class="stat-value" id="targetStat">25</span></div>
+      <div class="stat"><span class="stat-label">Score</span><span class="stat-value" id="scoreStat">0</span></div>
+      <div class="stat"><span class="stat-label">Plays</span><span class="stat-value" id="playsStat">3</span></div>
+      <div class="stat"><span class="stat-label">Discards</span><span class="stat-value" id="discardsStat">3</span></div>
+    </div>
+    <div class="top-actions">
+      <button class="icon-btn" id="rulesBtn" title="How to play" aria-label="How to play">?</button>
+      <button class="icon-btn" id="undoBtnTop" title="Undo last action (U or Ctrl/Cmd+Z)" aria-label="Undo last action" disabled>↶</button>
+      <button class="icon-btn" id="soundBtn" title="Toggle sound" aria-label="Toggle sound">♪</button>
+      <button class="icon-btn" id="restartBtn" title="New game" aria-label="New game">↻</button>
+    </div>
+  </header>
+
+  <main class="main-grid">
+    <section class="table-panel" aria-label="Solatro table">
+      <div class="round-banner">
+        <strong id="roundTitle">ROUND 1</strong>
+        <span id="roundSubtitle">Reach 25 points before your plays run out.</span>
+      </div>
+
+      <div class="play-history" id="playHistory" aria-label="Hands played this round"></div>
+
+      <div class="hand-zone">
+        <div class="hand-meta">
+          <div>
+            <h2>Your hand</h2>
+            <div id="deckCaption" style="font-size:12px;font-weight:800;opacity:.78">Deck: 44 cards</div>
+            <div class="save-caption" id="saveCaption">Progress saves on this device.</div>
+          </div>
+          <div class="hand-tools">
+            <button class="small-btn" id="bestHandBtn" title="Select the highest-scoring hand available (H)">Hint</button>
+            <button class="small-btn" id="undoBtn" title="Undo the last play, discard, or bonus use (U)" disabled>Undo</button>
+            <button class="small-btn" id="sortRankBtn" title="Sort hand by rank" aria-label="Sort hand by rank">Rank</button>
+            <button class="small-btn" id="sortSuitBtn" title="Sort hand by suit" aria-label="Sort hand by suit">Suit</button>
+            <button class="small-btn" id="clearBtn">Clear</button>
+          </div>
+        </div>
+
+        <div class="cards" id="hand" role="group" aria-label="Cards in hand. Use arrow keys to move between cards, Enter or Space to select."></div>
+
+        <div class="action-tray">
+          <div class="preview-box" aria-live="polite">
+            <div class="preview-copy">
+              <div class="preview-kicker">Selected hand</div>
+              <div class="preview-name" id="previewName">Pick 1–5 cards</div>
+              <div class="preview-outcome" id="previewOutcome">Tap cards to select them.</div>
+            </div>
+            <div class="preview-score" id="previewScore">—</div>
+          </div>
+          <button class="secondary-btn discard-btn" id="discardBtn">Discard</button>
+          <button class="primary-btn" id="playBtn">Play Hand</button>
+        </div>
+      </div>
+    </section>
+
+    <aside class="side-panel" id="sidePanel">
+      <button class="mobile-pocket-toggle" id="mobilePocketToggle" type="button" aria-expanded="false" aria-controls="mobilePowerContents">
+        <span class="mobile-pocket-icon" aria-hidden="true">✦</span>
+        <span class="mobile-pocket-summary" id="mobilePocketSummary">Power-ups</span>
+        <span class="mobile-pocket-chevron" aria-hidden="true">⌃</span>
+      </button>
+      <div class="mobile-power-contents" id="mobilePowerContents">
+      <section class="paper-card progress-card">
+        <h3>Target progress</h3>
+        <div class="progress-rail"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="progress-caption" id="progressCaption">0 / 25 points</div>
+      </section>
+
+      <section class="paper-card">
+        <h3>Joker bank</h3>
+        <div class="joker-bank">
+          <div class="joker-card empty" id="jokerCard">JOKER</div>
+          <div>
+            <div id="jokerText" style="font-size:12px;line-height:1.35;font-weight:800;color:var(--muted)">Draw a Joker and it banks automatically.</div>
+            <label class="joker-toggle">
+              <input type="checkbox" id="jokerToggle" disabled /> Add Joker to this play
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <section class="paper-card">
+        <h3>Bonus pocket</h3>
+        <div class="token-list" id="tokenList"></div>
+      </section>
+
+      <section class="paper-card log-card">
+        <h3>Table talk</h3>
+        <div class="log" id="gameLog" aria-live="polite"></div>
+      </section>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<div class="sr-only" id="gameStatus" role="status" aria-live="polite" aria-atomic="true"></div>
+
+<div class="overlay" id="introOverlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="introTitle">
+    <div class="intro-grid">
+      <div>
+        <div style="font-size:11px;font-weight:950;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)">A solo poker-solitaire card game</div>
+        <h1 id="introTitle">SOL<span style="display:inline-grid;place-items:center;width:.72em;height:1em;border:.08em solid var(--ink);border-radius:.08em;font-size:.68em;vertical-align:.08em;transform:rotate(-6deg);background:white">A♠</span>TRO</h1>
+        <p>Survive as many escalating rounds as you can. Build poker hands, bank wild Jokers, and spend excess points on one-shot bonuses.</p>
+        <div class="intro-points">
+          <div class="intro-point"><strong>8</strong><span>cards to start</span></div>
+          <div class="intro-point"><strong>3</strong><span>plays / round</span></div>
+          <div class="intro-point"><strong>25</strong><span>more target each round</span></div>
+        </div>
+        <div style="font-size:12px;color:var(--muted);font-weight:800">Best reached round: <span id="bestRoundIntro">—</span></div>
+        <div class="modal-actions" style="justify-content:flex-start">
+          <button class="primary-btn" id="startBtn">New run</button>
+          <button class="secondary-btn hidden" id="resumeBtn">Continue saved run</button>
+          <button class="secondary-btn" id="introRulesBtn">Read the rules</button>
+        </div>
+      </div>
+      <div class="doodle-card">
+        <div style="font-family:'Comic Sans MS',cursive;font-size:26px;font-weight:900;text-align:center">FRIDAY NIGHT PLAN</div>
+        <div style="font-size:64px;text-align:center;margin:10px 0">🂡 ♠ 🃏</div>
+        <div style="border-top:2px solid var(--ink);padding-top:9px;font-weight:900;line-height:1.6">
+          ✓ Make poker hands<br />
+          ✓ Chase absurd scores<br />
+          ✓ Become a giga-dweeb
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="shopOverlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="shopTitle">
+    <div class="shop-head">
+      <div>
+        <div style="font-size:11px;font-weight:950;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)" id="shopEyebrow">Round cleared</div>
+        <h2 id="shopTitle">BONUS SHOPPE</h2>
+        <div id="shopSummary" style="font-size:13px;color:var(--muted);font-weight:800"></div>
+      </div>
+      <div class="credits">✦ <span id="creditsValue">0</span></div>
+    </div>
+    <div class="shop-grid" id="shopGrid"></div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:0">You can own only one of each bonus at a time. Unspent excess points disappear when you continue.</p>
+    <div class="modal-actions">
+      <button class="primary-btn" id="nextRoundBtn">Start next round →</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="rulesOverlay">
+  <div class="modal wide" role="dialog" aria-modal="true" aria-labelledby="rulesTitle">
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
+      <div>
+        <div style="font-size:11px;font-weight:950;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)">Pocket rules</div>
+        <h2 id="rulesTitle">HOW TO PLAY SOLATRO</h2>
+      </div>
+      <button class="icon-btn" id="closeRulesBtn" aria-label="Close rules">×</button>
+    </div>
+    <div class="rules-grid">
+      <div class="rules-col">
+        <h3>Round</h3>
+        <ul>
+          <li>Round 1 target is 25. Every new round adds 25.</li>
+          <li>Draw to an 8-card hand. You get 3 plays and 3 discard chances.</li>
+          <li>On a play, choose up to 5 cards. Played cards stay out until the round ends.</li>
+          <li>On a discard, throw away 1–5 cards. After either action, draw back to your current hand limit.</li>
+          <li>Meet or beat the target after your plays are used, or the run ends unless a Shield saves you.</li>
+        </ul>
+      </div>
+      <div class="rules-col">
+        <h3>Hand scores</h3>
+        <table class="score-table">
+          <tbody>
+            <tr><td>High Card</td><td>5</td></tr>
+            <tr><td>Pair</td><td>10</td></tr>
+            <tr><td>Two Pair</td><td>20</td></tr>
+            <tr><td>Three of a Kind</td><td>30</td></tr>
+            <tr><td>Straight</td><td>40</td></tr>
+            <tr><td>Flush</td><td>50</td></tr>
+            <tr><td>Full House</td><td>60</td></tr>
+            <tr><td>Four of a Kind</td><td>100</td></tr>
+            <tr><td>Straight Flush</td><td>125</td></tr>
+            <tr><td>Royal Flush</td><td>150</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="rules-col">
+        <h3>Jokers & bonuses</h3>
+        <ul>
+          <li>A drawn Joker is banked automatically and replaced. Add it to a later play as a wildcard.</li>
+          <li>If you already have a banked Joker and draw the other one, you lose both.</li>
+          <li>After a successful round, excess score becomes shop points for that visit only.</li>
+          <li>Buy Extra Card, Extra Discard, Pocket Points, Extra Hand, Double Score, or a Shield.</li>
+          <li>Bonuses stay in your pocket until used; each type is limited to one at a time.</li>
+          <li><strong>Digital controls:</strong> H = hint, U or Ctrl/Cmd+Z = undo, P = play, D = discard. Arrow keys move between cards.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="primary-btn" id="closeRulesBtn2">Got it</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="gameOverOverlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="gameOverTitle" style="text-align:center">
+    <div style="font-size:11px;font-weight:950;letter-spacing:.15em;text-transform:uppercase;color:var(--muted)">Run over</div>
+    <h2 id="gameOverTitle" style="font-size:42px;margin-bottom:4px">YOU DIED!</h2>
+    <p id="gameOverSummary" style="margin-top:0"></p>
+    <div class="game-over-rank" id="rankBadge">Unranked Dweeb</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 16px">
+      <div class="intro-point"><strong id="finalRound">1</strong><span>round reached</span></div>
+      <div class="intro-point"><strong id="finalCleared">0</strong><span>rounds cleared</span></div>
+      <div class="intro-point"><strong id="finalBest">1</strong><span>best reached</span></div>
+    </div>
+    <div class="modal-actions" style="justify-content:center">
+      <button class="primary-btn" id="playAgainBtn">Play again</button>
+      <button class="secondary-btn" id="gameOverRulesBtn">Rules</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-stack" id="toastStack"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  const HAND_SCORES = {
+    'High Card': 5,
+    'Pair': 10,
+    'Two Pair': 20,
+    'Three of a Kind': 30,
+    'Straight': 40,
+    'Flush': 50,
+    'Full House': 60,
+    'Four of a Kind': 100,
+    'Straight Flush': 125,
+    'Royal Flush': 150
+  };
+  const HAND_RANK = Object.fromEntries(Object.keys(HAND_SCORES).map((name, i) => [name, i]));
+  const SUITS = [
+    { key: 'S', symbol: '♠', name: 'spades', red: false },
+    { key: 'H', symbol: '♥', name: 'hearts', red: true },
+    { key: 'D', symbol: '♦', name: 'diamonds', red: true },
+    { key: 'C', symbol: '♣', name: 'clubs', red: false }
+  ];
+  const RANKS = [2,3,4,5,6,7,8,9,10,11,12,13,14];
+  const BONUS = {
+    extraCard:    { name: 'Extra Card', cost: 10, desc: '+1 card in your hand this round.' },
+    extraDiscard: { name: 'Extra Discard', cost: 25, desc: '+1 discard opportunity this round.' },
+    pocketPoints: { name: 'Pocket Points', cost: 50, desc: 'Add 25 points to this round.' },
+    extraHand:    { name: 'Extra Hand', cost: 75, desc: 'Play one extra hand this round.' },
+    doubleScore:  { name: 'Double Score', cost: 100, desc: 'Double the points from your next play.' },
+    shield:       { name: 'Shield', cost: 150, desc: 'Ignore one failed round and advance anyway.' }
+  };
+
+  const $ = (id) => document.getElementById(id);
+
+  const els = {
+    roundStat: $('roundStat'), targetStat: $('targetStat'), scoreStat: $('scoreStat'), playsStat: $('playsStat'), discardsStat: $('discardsStat'),
+    roundTitle: $('roundTitle'), roundSubtitle: $('roundSubtitle'), playHistory: $('playHistory'), hand: $('hand'), deckCaption: $('deckCaption'),
+    previewName: $('previewName'), previewScore: $('previewScore'), previewOutcome: $('previewOutcome'), previewBox: document.querySelector('.preview-box'), playBtn: $('playBtn'), discardBtn: $('discardBtn'), progressFill: $('progressFill'), progressCaption: $('progressCaption'),
+    jokerCard: $('jokerCard'), jokerText: $('jokerText'), jokerToggle: $('jokerToggle'), tokenList: $('tokenList'), gameLog: $('gameLog'),
+    introOverlay: $('introOverlay'), shopOverlay: $('shopOverlay'), rulesOverlay: $('rulesOverlay'), gameOverOverlay: $('gameOverOverlay'),
+    creditsValue: $('creditsValue'), shopGrid: $('shopGrid'), shopEyebrow: $('shopEyebrow'), shopSummary: $('shopSummary'), nextRoundBtn: $('nextRoundBtn'),
+    bestRoundIntro: $('bestRoundIntro'), gameOverSummary: $('gameOverSummary'), rankBadge: $('rankBadge'), finalRound: $('finalRound'), finalCleared: $('finalCleared'), finalBest: $('finalBest'),
+    toastStack: $('toastStack'), soundBtn: $('soundBtn'), gameStatus: $('gameStatus'), saveCaption: $('saveCaption'),
+    undoBtn: $('undoBtn'), undoBtnTop: $('undoBtnTop'), resumeBtn: $('resumeBtn'),
+    sidePanel: $('sidePanel'), mobilePocketToggle: $('mobilePocketToggle'), mobilePocketSummary: $('mobilePocketSummary')
+  };
+
+  let uid = 0;
+  let audioCtx = null;
+  let soundOn = true;
+  let undoSnapshot = null;
+  let resolveTimer = null;
+  const modalReturnFocus = new WeakMap();
+  const SAVE_KEY = 'solatroRunV2';
+  try { soundOn = localStorage.getItem('solatroSound') !== 'off'; } catch (_) {}
+
+  const state = {
+    round: 1,
+    target: 25,
+    score: 0,
+    playsRemaining: 3,
+    discardsRemaining: 3,
+    handLimit: 8,
+    deck: [],
+    hand: [],
+    selected: new Set(),
+    bankedJoker: false,
+    useJoker: false,
+    tokens: Object.fromEntries(Object.keys(BONUS).map(k => [k, false])),
+    doubleArmed: false,
+    phase: 'intro',
+    playsThisRound: [],
+    log: [],
+    shopCredits: 0,
+    shieldedRound: false,
+    sortMode: 'draw',
+    shopBoughtThisVisit: new Set()
+  };
+
+  function announce(message) {
+    if (!els.gameStatus) return;
+    els.gameStatus.textContent = '';
+    requestAnimationFrame(() => { els.gameStatus.textContent = message; });
+  }
+
+  function cloneCard(card) {
+    return card.type === 'joker' ? { id: card.id, type: 'joker' } : { ...card, suit: { ...card.suit } };
+  }
+
+  function captureState() {
+    return {
+      round: state.round, target: state.target, score: state.score, playsRemaining: state.playsRemaining,
+      discardsRemaining: state.discardsRemaining, handLimit: state.handLimit,
+      deck: state.deck.map(cloneCard), hand: state.hand.map(cloneCard), selected: [...state.selected],
+      bankedJoker: state.bankedJoker, useJoker: state.useJoker, tokens: { ...state.tokens },
+      doubleArmed: state.doubleArmed, phase: state.phase,
+      playsThisRound: state.playsThisRound.map(x => ({ ...x, cards: [...x.cards] })),
+      log: [...state.log], shopCredits: state.shopCredits, shieldedRound: state.shieldedRound,
+      sortMode: state.sortMode, shopBoughtThisVisit: [...state.shopBoughtThisVisit]
+    };
+  }
+
+  function restoreState(saved) {
+    Object.assign(state, saved);
+    state.selected = new Set(saved.selected || []);
+    state.shopBoughtThisVisit = new Set(saved.shopBoughtThisVisit || []);
+  }
+
+  function saveUndo(label) {
+    undoSnapshot = { label, state: captureState() };
+    renderUndo();
+  }
+
+  function undoLastAction() {
+    if (!undoSnapshot || state.phase !== 'round') return;
+    if (resolveTimer) { clearTimeout(resolveTimer); resolveTimer = null; }
+    const label = undoSnapshot.label;
+    restoreState(undoSnapshot.state);
+    undoSnapshot = null;
+    addLog(`<strong>Undid:</strong> ${label}.`);
+    render();
+    persistRun();
+    announce(`Undid ${label}.`);
+    beep('tap');
+  }
+
+  function renderUndo() {
+    const enabled = !!undoSnapshot && state.phase === 'round';
+    if (els.undoBtn) els.undoBtn.disabled = !enabled;
+    if (els.undoBtnTop) els.undoBtnTop.disabled = !enabled;
+  }
+
+  function persistRun() {
+    if (!['round','shop'].includes(state.phase)) return;
+    try {
+      localStorage.setItem(SAVE_KEY, JSON.stringify({ version: 2, savedAt: Date.now(), state: captureState() }));
+      if (els.saveCaption) els.saveCaption.textContent = 'Autosaved locally.';
+    } catch (_) {
+      if (els.saveCaption) els.saveCaption.textContent = 'Autosave unavailable in this browser.';
+    }
+  }
+
+  function focusFirstCard() {
+    requestAnimationFrame(() => els.hand.querySelector('.card')?.focus());
+  }
+
+  function clearSavedRun() {
+    try { localStorage.removeItem(SAVE_KEY); } catch (_) {}
+  }
+
+  function getSavedRun() {
+    try {
+      const raw = localStorage.getItem(SAVE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (parsed?.version !== 2 || !parsed.state || !['round','shop'].includes(parsed.state.phase)) return null;
+      return parsed;
+    } catch (_) { return null; }
+  }
+
+  function resumeGame() {
+    const saved = getSavedRun();
+    if (!saved) { toast('No saved run found.'); updateResumeButton(); return; }
+    restoreState(saved.state);
+    undoSnapshot = null;
+    hideOverlay(els.introOverlay, false);
+    render();
+    if (state.phase === 'shop') openShop(state.shieldedRound);
+    else focusFirstCard();
+    announce(`Resumed round ${state.round}. Score ${state.score} of ${state.target}.`);
+  }
+
+  function updateResumeButton() {
+    const saved = getSavedRun();
+    if (!els.resumeBtn) return;
+    els.resumeBtn.classList.toggle('hidden', !saved);
+    if (saved) els.resumeBtn.textContent = `Continue round ${saved.state.round}`;
+  }
+
+  function visibleOverlays() {
+    return [els.introOverlay, els.shopOverlay, els.rulesOverlay, els.gameOverOverlay].filter(x => x && !x.classList.contains('hidden'));
+  }
+
+  function syncModalState() {
+    const visible = visibleOverlays();
+    const top = visible[visible.length - 1];
+    document.querySelector('.app-shell').inert = visible.length > 0;
+    visible.forEach(x => { x.inert = x !== top; x.classList.toggle('active-modal', x === top); });
+    return top;
+  }
+
+  function showOverlay(overlay, focusTarget) {
+    if (!overlay) return;
+    modalReturnFocus.set(overlay, document.activeElement);
+    overlay.classList.remove('hidden');
+    overlay.setAttribute('aria-hidden', 'false');
+    syncModalState();
+    requestAnimationFrame(() => {
+      const target = typeof focusTarget === 'string' ? $(focusTarget) : focusTarget;
+      (target || overlay.querySelector('button, [href], input, [tabindex]:not([tabindex="-1"])'))?.focus();
+    });
+  }
+
+  function hideOverlay(overlay, restoreFocus = true) {
+    if (!overlay) return;
+    overlay.classList.add('hidden');
+    overlay.setAttribute('aria-hidden', 'true');
+    overlay.classList.remove('active-modal');
+    overlay.inert = false;
+    const top = syncModalState();
+    if (restoreFocus) {
+      const prior = modalReturnFocus.get(overlay);
+      requestAnimationFrame(() => {
+        if (prior && document.contains(prior) && !prior.closest('[inert]')) prior.focus();
+        else top?.querySelector('button, [href], input, [tabindex]:not([tabindex="-1"])')?.focus();
+      });
+    }
+  }
+
+  function trapModalTab(e) {
+    if (e.key !== 'Tab') return;
+    const top = syncModalState();
+    if (!top) return;
+    const focusables = [...top.querySelectorAll('button:not(:disabled), [href], input:not(:disabled), [tabindex]:not([tabindex="-1"])')].filter(el => el.offsetParent !== null);
+    if (!focusables.length) return;
+    const first = focusables[0], last = focusables[focusables.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
+
+  function rankLabel(rank) {
+    return ({11:'J',12:'Q',13:'K',14:'A'})[rank] || String(rank);
+  }
+
+  function cardShort(card) {
+    return `${rankLabel(card.rank)}${card.suit.symbol}`;
+  }
+
+  function createDeck() {
+    const deck = [];
+    for (const suit of SUITS) {
+      for (const rank of RANKS) deck.push({ id: ++uid, type: 'card', suit, rank });
+    }
+    const jokerCount = state.bankedJoker ? 1 : 2;
+    for (let i = 0; i < jokerCount; i++) deck.push({ id: ++uid, type: 'joker' });
+    return shuffle(deck);
+  }
+
+  function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+  }
+
+  function beep(type = 'tap') {
+    if (!soundOn) return;
+    try {
+      audioCtx ??= new (window.AudioContext || window.webkitAudioContext)();
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      const cfg = {
+        tap: [280, .035, .025],
+        play: [420, .085, .04],
+        win: [660, .16, .05],
+        bad: [125, .13, .045],
+        buy: [530, .08, .035],
+        joker: [760, .10, .04]
+      }[type] || [300, .05, .03];
+      osc.frequency.setValueAtTime(cfg[0], now);
+      if (type === 'win') osc.frequency.exponentialRampToValueAtTime(980, now + cfg[1]);
+      if (type === 'bad') osc.frequency.exponentialRampToValueAtTime(80, now + cfg[1]);
+      gain.gain.setValueAtTime(cfg[2], now);
+      gain.gain.exponentialRampToValueAtTime(.0001, now + cfg[1]);
+      osc.start(now); osc.stop(now + cfg[1]);
+    } catch (_) {}
+  }
+
+  function addLog(message) {
+    state.log.unshift(message);
+    state.log = state.log.slice(0, 12);
+  }
+
+  function toast(message) {
+    announce(message);
+    const div = document.createElement('div');
+    div.className = 'toast';
+    div.textContent = message;
+    els.toastStack.appendChild(div);
+    setTimeout(() => { div.style.opacity = '0'; div.style.transform = 'translateY(8px)'; }, 2400);
+    setTimeout(() => div.remove(), 2750);
+  }
+
+  function burst() {
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    for (let i = 0; i < 18; i++) {
+      const b = document.createElement('i');
+      b.className = 'burst';
+      b.style.left = `${50 + (Math.random() - .5) * 12}%`;
+      b.style.top = `${24 + (Math.random() - .5) * 8}%`;
+      b.style.setProperty('--dx', `${(Math.random() - .5) * 460}px`);
+      b.style.setProperty('--dy', `${(Math.random() - .2) * 330}px`);
+      document.body.appendChild(b);
+      setTimeout(() => b.remove(), 900);
+    }
+  }
+
+  function startGame() {
+    Object.assign(state, {
+      round: 1, target: 25, score: 0, playsRemaining: 3, discardsRemaining: 3, handLimit: 8,
+      deck: [], hand: [], selected: new Set(), bankedJoker: false, useJoker: false,
+      tokens: Object.fromEntries(Object.keys(BONUS).map(k => [k, false])),
+      doubleArmed: false, phase: 'round', playsThisRound: [], log: [], shopCredits: 0, shieldedRound: false, sortMode: 'draw',
+      shopBoughtThisVisit: new Set()
+    });
+    undoSnapshot = null;
+    if (resolveTimer) { clearTimeout(resolveTimer); resolveTimer = null; }
+    clearSavedRun();
+    hideOverlay(els.introOverlay, false);
+    hideOverlay(els.gameOverOverlay, false);
+    beginRound();
+    focusFirstCard();
+  }
+
+  function beginRound() {
+    state.target = state.round * 25;
+    state.score = 0;
+    state.playsRemaining = 3;
+    state.discardsRemaining = 3;
+    state.handLimit = 8;
+    state.selected.clear();
+    state.useJoker = false;
+    state.doubleArmed = false;
+    state.playsThisRound = [];
+    state.shieldedRound = false;
+    state.shopBoughtThisVisit = new Set();
+    state.phase = 'round';
+    undoSnapshot = null;
+    state.deck = createDeck();
+    state.hand = [];
+    addLog(`<strong>Round ${state.round}.</strong> Target: ${state.target}.`);
+    drawToLimit();
+    render();
+  }
+
+  function drawToLimit() {
+    let safety = 80;
+    while (state.hand.length < state.handLimit && state.deck.length && safety-- > 0) {
+      const card = state.deck.pop();
+      if (card.type === 'joker') {
+        if (state.bankedJoker) {
+          state.bankedJoker = false;
+          state.useJoker = false;
+          addLog(`<strong>Joker collision!</strong> Both Jokers are lost for this round.`);
+          toast('Joke’s on you — both Jokers are gone!');
+          beep('bad');
+        } else {
+          state.bankedJoker = true;
+          addLog(`<strong>Joker banked.</strong> Drawn card replaced.`);
+          toast('Joker banked! Wildcard ready.');
+          beep('joker');
+        }
+        continue;
+      }
+      state.hand.push(card);
+    }
+    if (state.hand.length < state.handLimit && state.deck.length === 0) {
+      addLog(`<strong>Deck exhausted.</strong> Finish the round with what remains.`);
+      toast('Deck exhausted — play what remains.');
+    }
+  }
+
+  function sortHand(mode) {
+    state.sortMode = mode;
+    const suitOrder = { S: 0, H: 1, D: 2, C: 3 };
+    state.hand.sort((a, b) => {
+      if (mode === 'rank') return b.rank - a.rank || suitOrder[a.suit.key] - suitOrder[b.suit.key];
+      if (mode === 'suit') return suitOrder[a.suit.key] - suitOrder[b.suit.key] || b.rank - a.rank;
+      return a.id - b.id;
+    });
+    renderHand();
+  }
+
+  function toggleCard(id) {
+    if (state.phase !== 'round') return;
+    if (state.selected.has(id)) {
+      state.selected.delete(id);
+      beep('tap');
+    } else {
+      if (state.selected.size >= 5) {
+        toast('A play can use at most 5 cards from your hand.');
+        return;
+      }
+      state.selected.add(id);
+      beep('tap');
+    }
+    renderHand();
+    renderPreview();
+  }
+
+  function selectedCards() {
+    return state.hand.filter(c => state.selected.has(c.id));
+  }
+
+  function isStraight(ranks) {
+    const unique = [...new Set(ranks)].sort((a,b) => a-b);
+    if (unique.length !== 5) return false;
+    if (unique[4] - unique[0] === 4 && unique.every((r, i) => i === 0 || r === unique[i-1] + 1)) return true;
+    return JSON.stringify(unique) === JSON.stringify([2,3,4,5,14]);
+  }
+
+  function evaluateNoWild(cards) {
+    const n = cards.length;
+    const counts = {};
+    for (const c of cards) counts[c.rank] = (counts[c.rank] || 0) + 1;
+    const countVals = Object.values(counts).sort((a,b) => b-a);
+    const ranks = cards.map(c => c.rank);
+    const flush = n === 5 && cards.every(c => c.suit.key === cards[0].suit.key);
+    const straight = n === 5 && isStraight(ranks);
+    const uniqueRanks = [...new Set(ranks)].sort((a,b) => a-b);
+    const royal = straight && flush && JSON.stringify(uniqueRanks) === JSON.stringify([10,11,12,13,14]);
+
+    if (royal) return 'Royal Flush';
+    if (straight && flush) return 'Straight Flush';
+    if (countVals[0] >= 4) return 'Four of a Kind';
+    if (n === 5 && countVals[0] === 3 && countVals[1] === 2) return 'Full House';
+    if (flush) return 'Flush';
+    if (straight) return 'Straight';
+    if (countVals[0] >= 3) return 'Three of a Kind';
+    if (countVals.filter(v => v >= 2).length >= 2) return 'Two Pair';
+    if (countVals[0] >= 2) return 'Pair';
+    return 'High Card';
+  }
+
+  function combinations(arr, choose) {
+    const out = [];
+    const rec = (start, combo) => {
+      if (combo.length === choose) { out.push(combo.slice()); return; }
+      for (let i = start; i <= arr.length - (choose - combo.length); i++) {
+        combo.push(arr[i]); rec(i + 1, combo); combo.pop();
+      }
+    };
+    rec(0, []);
+    return out;
+  }
+
+  function evaluateHand(cards, useWild) {
+    if (!cards.length) return null;
+    if (!useWild) {
+      const name = evaluateNoWild(cards);
+      return { name, points: HAND_SCORES[name] };
+    }
+
+    const naturalsSets = cards.length >= 5 ? combinations(cards, 4) : [cards];
+    let best = { name: 'High Card', points: 5 };
+    for (const naturals of naturalsSets) {
+      for (const suit of SUITS) {
+        for (const rank of RANKS) {
+          const wildCard = { id: -1, type: 'card', suit, rank };
+          const test = naturals.concat(wildCard);
+          if (test.length > 5) continue;
+          const name = evaluateNoWild(test);
+          const candidate = { name, points: HAND_SCORES[name] };
+          if (HAND_RANK[candidate.name] > HAND_RANK[best.name]) best = candidate;
+        }
+      }
+    }
+    return best;
+  }
+
+  function bestSelection() {
+    if (state.phase !== 'round' || !state.hand.length) return;
+    let best = null;
+    const max = Math.min(5, state.hand.length);
+    for (let size = 1; size <= max; size++) {
+      for (const combo of combinations(state.hand, size)) {
+        for (const wild of state.bankedJoker ? [false, true] : [false]) {
+          const ev = evaluateHand(combo, wild);
+          const value = ev.points;
+          const tiebreak = size;
+          if (!best || value > best.value || (value === best.value && tiebreak < best.tiebreak)) {
+            best = { combo, wild, value, tiebreak };
+          }
+        }
+      }
+    }
+    if (!best) return;
+    state.selected = new Set(best.combo.map(c => c.id));
+    state.useJoker = best.wild;
+    beep('tap');
+    renderHand();
+    renderJoker();
+    renderPreview();
+    const ev = evaluateHand(best.combo, best.wild);
+    announce(`Hint selected ${ev.name} for ${ev.points}${best.wild ? ' using the Joker' : ''}.`);
+  }
+
+  function playHand() {
+    if (state.phase !== 'round' || state.playsRemaining <= 0) return;
+    const cards = selectedCards();
+    if (!cards.length) { toast('Pick at least one card to play.'); return; }
+    const useWild = state.useJoker && state.bankedJoker;
+    const ev = evaluateHand(cards, useWild);
+    saveUndo(`played ${ev.name}`);
+    let points = ev.points;
+    const doubled = state.doubleArmed;
+    if (doubled) {
+      points *= 2;
+      state.doubleArmed = false;
+    }
+
+    state.score += points;
+    state.playsRemaining -= 1;
+    state.playsThisRound.push({
+      name: ev.name,
+      points,
+      doubled,
+      cards: cards.map(cardShort),
+      joker: useWild
+    });
+
+    const ids = new Set(cards.map(c => c.id));
+    state.hand = state.hand.filter(c => !ids.has(c.id));
+    if (useWild) state.bankedJoker = false;
+    state.selected.clear();
+    state.useJoker = false;
+
+    addLog(`<strong>${ev.name}</strong> for ${points} point${points === 1 ? '' : 's'}${doubled ? ' (doubled!)' : ''}.`);
+    beep('play');
+    drawToLimit();
+    render();
+    announce(`${ev.name} scored ${points}. Total ${state.score} of ${state.target}.`);
+
+    if (state.playsRemaining === 0) {
+      resolveTimer = setTimeout(() => { resolveTimer = null; resolveRound(); }, 520);
+    }
+  }
+
+  function discardCards() {
+    if (state.phase !== 'round' || state.discardsRemaining <= 0) return;
+    const cards = selectedCards();
+    if (!cards.length) { toast('Pick 1–5 cards to discard.'); return; }
+    saveUndo(`discarded ${cards.length} card${cards.length === 1 ? '' : 's'}`);
+    const ids = new Set(cards.map(c => c.id));
+    state.hand = state.hand.filter(c => !ids.has(c.id));
+    state.discardsRemaining -= 1;
+    state.selected.clear();
+    state.useJoker = false;
+    addLog(`Discarded ${cards.length} card${cards.length === 1 ? '' : 's'} and drew replacements.`);
+    beep('tap');
+    drawToLimit();
+    render();
+  }
+
+  function resolveRound() {
+    if (state.phase !== 'round' || state.playsRemaining !== 0) return;
+    undoSnapshot = null;
+    if (state.score >= state.target) {
+      state.shopCredits = state.score - state.target;
+      state.phase = 'shop';
+      addLog(`<strong>Round cleared.</strong> ${state.shopCredits} excess point${state.shopCredits === 1 ? '' : 's'} for the shoppe.`);
+      beep('win'); burst();
+      openShop(false);
+    } else if (state.tokens.shield) {
+      state.tokens.shield = false;
+      state.shopCredits = 0;
+      state.shieldedRound = true;
+      state.phase = 'shop';
+      addLog(`<strong>Shield used!</strong> Failed round ignored. Advance anyway.`);
+      toast('Shield cracked — but you live!');
+      beep('win'); burst();
+      openShop(true);
+    } else {
+      endGame();
+    }
+    render();
+  }
+
+  function openShop(shielded) {
+    els.shopEyebrow.textContent = shielded ? 'Shield save!' : 'Round cleared';
+    els.shopSummary.textContent = shielded
+      ? `You scored ${state.score} / ${state.target}. Your Shield advances you, but there are no excess points to spend.`
+      : `You scored ${state.score} on a ${state.target}-point target. Spend the ${state.shopCredits} excess points or leave them behind.`;
+    showOverlay(els.shopOverlay, state.shopCredits > 0 ? els.shopGrid.querySelector('button:not(:disabled)') : els.nextRoundBtn);
+    renderShop();
+    requestAnimationFrame(() => (els.shopGrid.querySelector('button:not(:disabled)') || els.nextRoundBtn)?.focus());
+  }
+
+  function buyBonus(key) {
+    if (state.phase !== 'shop') return;
+    const bonus = BONUS[key];
+    if (state.shopBoughtThisVisit.has(key)) {
+      state.shopBoughtThisVisit.delete(key);
+      state.tokens[key] = false;
+      state.shopCredits += bonus.cost;
+      addLog(`Refunded <strong>${bonus.name}</strong> before leaving the shoppe.`);
+      toast(`${bonus.name} refunded.`);
+      beep('tap');
+      renderShop(); renderTokens(); persistRun();
+      return;
+    }
+    if (state.tokens[key]) { toast(`You already own ${bonus.name}.`); return; }
+    if (state.shopCredits < bonus.cost) { toast(`Need ${bonus.cost - state.shopCredits} more shop points.`); return; }
+    state.shopCredits -= bonus.cost;
+    state.tokens[key] = true;
+    state.shopBoughtThisVisit.add(key);
+    addLog(`Bought <strong>${bonus.name}</strong>.`);
+    toast(`${bonus.name} added. You can refund it until you continue.`);
+    beep('buy');
+    renderShop();
+    renderTokens();
+    persistRun();
+  }
+
+  function useBonus(key) {
+    if (state.phase !== 'round' || !state.tokens[key]) return;
+    if (key === 'shield') { toast('Shield triggers automatically if you fail a round.'); return; }
+    if (key === 'doubleScore' && state.doubleArmed) { toast('Double Score is already armed.'); return; }
+
+    saveUndo(`used ${BONUS[key].name}`);
+    state.tokens[key] = false;
+    switch (key) {
+      case 'extraCard':
+        state.handLimit += 1;
+        drawToLimit();
+        addLog(`<strong>Extra Card:</strong> hand limit is ${state.handLimit} this round.`);
+        toast('+1 hand size this round.');
+        break;
+      case 'extraDiscard':
+        state.discardsRemaining += 1;
+        addLog(`<strong>Extra Discard:</strong> +1 discard chance.`);
+        toast('+1 discard chance.');
+        break;
+      case 'pocketPoints':
+        state.score += 25;
+        addLog(`<strong>Pocket Points:</strong> +25 score.`);
+        toast('+25 points!');
+        break;
+      case 'extraHand':
+        state.playsRemaining += 1;
+        addLog(`<strong>Extra Hand:</strong> +1 play this round.`);
+        toast('+1 play this round.');
+        break;
+      case 'doubleScore':
+        state.doubleArmed = true;
+        addLog(`<strong>Double Score armed.</strong> Next play is worth 2×.`);
+        toast('Next play scores double.');
+        break;
+    }
+    beep('buy');
+    render();
+  }
+
+  function nextRound() {
+    if (state.phase !== 'shop') return;
+    state.shopCredits = 0;
+    state.round += 1;
+    hideOverlay(els.shopOverlay, false);
+    beginRound();
+    focusFirstCard();
+  }
+
+  function getBestRound() {
+    try { return Math.max(1, Number(localStorage.getItem('solatroBestRound') || 1)); } catch (_) { return 1; }
+  }
+
+  function setBestRound(n) {
+    try { localStorage.setItem('solatroBestRound', String(Math.max(getBestRound(), n))); } catch (_) {}
+  }
+
+  function getRank(cleared) {
+    if (cleared >= 10) return 'Ultra Mega Uber Giga-Dweeb';
+    if (cleared >= 7) return 'Official Dweeb';
+    if (cleared >= 5) return 'Little Dweeb';
+    if (cleared >= 3) return 'Cat Food';
+    return 'Unranked Dweeb';
+  }
+
+  function endGame() {
+    state.phase = 'gameover';
+    const reached = state.round;
+    const cleared = Math.max(0, state.round - 1);
+    setBestRound(reached);
+    const best = getBestRound();
+    els.gameOverSummary.textContent = `You scored ${state.score} against a target of ${state.target}. No Shield. No mercy.`;
+    els.rankBadge.textContent = getRank(cleared);
+    els.finalRound.textContent = reached;
+    els.finalCleared.textContent = cleared;
+    els.finalBest.textContent = best;
+    clearSavedRun();
+    updateResumeButton();
+    showOverlay(els.gameOverOverlay, $('playAgainBtn'));
+    beep('bad');
+    render();
+  }
+
+  function renderMobilePocketSummary() {
+    if (!els.mobilePocketSummary) return;
+    const owned = Object.values(state.tokens).filter(Boolean).length;
+    const joker = state.bankedJoker ? 'Joker ready' : 'No Joker';
+    els.mobilePocketSummary.textContent = `Power-ups · ${joker} · ${owned} bonus${owned === 1 ? '' : 'es'}`;
+  }
+
+  function render() {
+    els.roundStat.textContent = state.round;
+    els.targetStat.textContent = state.target;
+    els.scoreStat.textContent = state.score;
+    els.playsStat.textContent = state.playsRemaining;
+    els.discardsStat.textContent = state.discardsRemaining;
+    els.roundTitle.textContent = `ROUND ${state.round}`;
+    els.roundSubtitle.textContent = state.phase === 'round'
+      ? `Reach ${state.target} points before your plays run out.`
+      : state.phase === 'shop' ? 'Round complete — time to shop.' : 'The table has gone quiet.';
+    const pct = Math.max(0, Math.min(100, (state.score / state.target) * 100));
+    els.progressFill.style.width = `${pct}%`;
+    const remaining = Math.max(0, state.target - state.score);
+    els.progressCaption.textContent = remaining > 0
+      ? `${state.score} / ${state.target} points · ${remaining} still needed`
+      : `${state.score} / ${state.target} points · target reached${state.score > state.target ? ` · +${state.score - state.target} excess` : ''}`;
+    els.deckCaption.textContent = `Deck: ${state.deck.length} card${state.deck.length === 1 ? '' : 's'} · Hand limit: ${state.handLimit}`;
+
+    renderHand();
+    renderPreview();
+    renderHistory();
+    renderJoker();
+    renderTokens();
+    renderMobilePocketSummary();
+    renderLog();
+    renderUndo();
+    persistRun();
+  }
+
+  function renderHand() {
+    els.hand.innerHTML = '';
+    state.hand.forEach((card, idx) => {
+      const div = document.createElement('div');
+      div.className = `card${card.suit.red ? ' red' : ''}${state.selected.has(card.id) ? ' selected' : ''}`;
+      div.role = 'button';
+      div.tabIndex = state.phase === 'round' ? 0 : -1;
+      div.dataset.cardId = card.id;
+      div.setAttribute('aria-label', `${rankLabel(card.rank)} of ${card.suit.name}${state.selected.has(card.id) ? ', selected' : ', not selected'}`);
+      div.setAttribute('aria-pressed', state.selected.has(card.id) ? 'true' : 'false');
+      div.style.setProperty('--rot', `${((idx % 5) - 2) * .7}deg`);
+      const face = card.rank >= 11;
+      div.innerHTML = `
+        <div class="corner"><span>${rankLabel(card.rank)}</span><span class="suit">${card.suit.symbol}</span></div>
+        <div class="pip${face ? ' face' : ''}">${face ? rankLabel(card.rank) : card.suit.symbol}</div>
+        <div class="corner bottom"><span>${rankLabel(card.rank)}</span><span class="suit">${card.suit.symbol}</span></div>`;
+      div.addEventListener('click', () => toggleCard(card.id));
+      div.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCard(card.id); }
+        if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'].includes(e.key)) {
+          e.preventDefault();
+          const cards = [...els.hand.querySelectorAll('.card')];
+          const here = cards.indexOf(div);
+          let next = here;
+          if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = Math.max(0, here - 1);
+          if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = Math.min(cards.length - 1, here + 1);
+          if (e.key === 'Home') next = 0;
+          if (e.key === 'End') next = cards.length - 1;
+          cards[next]?.focus();
+        }
+      });
+      els.hand.appendChild(div);
+    });
+  }
+
+  function renderPreview() {
+    const cards = selectedCards();
+    const useWild = state.useJoker && state.bankedJoker;
+    const ev = cards.length ? evaluateHand(cards, useWild) : null;
+    const doubled = state.doubleArmed ? 2 : 1;
+    const points = ev ? ev.points * doubled : 0;
+    const projected = state.score + points;
+    const afterNeed = Math.max(0, state.target - projected);
+
+    els.previewBox?.classList?.toggle('clears', !!ev && projected >= state.target);
+    if (!ev) {
+      els.previewName.textContent = 'Pick 1–5 cards';
+      els.previewScore.textContent = '—';
+      els.previewOutcome.textContent = `Need ${Math.max(0, state.target - state.score)} more point${Math.max(0, state.target - state.score) === 1 ? '' : 's'} this round.`;
+    } else {
+      els.previewName.textContent = `${ev.name}${useWild ? ' + Joker' : ''}${state.doubleArmed ? ' ×2' : ''}`;
+      els.previewScore.textContent = `+${points}`;
+      els.previewOutcome.textContent = projected >= state.target
+        ? `${cards.length} selected · this play puts you at ${projected}, enough for the target.`
+        : `${cards.length} selected · after this play: ${projected} / ${state.target} · ${afterNeed} still needed.`;
+    }
+    els.playBtn.disabled = state.phase !== 'round' || state.playsRemaining <= 0 || cards.length === 0;
+    els.discardBtn.disabled = state.phase !== 'round' || state.discardsRemaining <= 0 || cards.length === 0;
+    els.playBtn.textContent = cards.length
+      ? `${state.doubleArmed ? 'Play ×2' : 'Play'} ${cards.length} · +${points}`
+      : (state.doubleArmed ? 'Play ×2 Hand' : 'Play Hand');
+    els.discardBtn.textContent = cards.length ? `Discard ${cards.length}` : 'Discard';
+  }
+
+  function renderHistory() {
+    els.playHistory.innerHTML = '';
+    const visibleSlots = Math.max(3, state.playsThisRound.length + state.playsRemaining);
+    for (let i = 0; i < visibleSlots; i++) {
+      const play = state.playsThisRound[i];
+      const slip = document.createElement('div');
+      slip.className = `play-slip${play ? '' : ' empty'}`;
+      slip.style.setProperty('--tilt', `${[-1.4,.6,-.4,1.1][i % 4]}deg`);
+      if (play) {
+        slip.innerHTML = `
+          <div class="tiny">Play ${i + 1}</div>
+          <div class="hand-name">${play.name}${play.joker ? ' 🃏' : ''}</div>
+          <div class="hand-score">+${play.points}${play.doubled ? ' ×2' : ''}</div>
+          <div class="mini-cards">${play.cards.join(' · ')}</div>`;
+      } else {
+        slip.innerHTML = `<div class="tiny">Play ${i + 1}</div><div class="hand-name" style="margin-top:17px">—</div>`;
+      }
+      els.playHistory.appendChild(slip);
+    }
+  }
+
+  function renderJoker() {
+    els.jokerCard.classList.toggle('empty', !state.bankedJoker);
+    els.jokerCard.textContent = state.bankedJoker ? 'JOKER\nWILD' : 'JOKER';
+    els.jokerCard.style.whiteSpace = 'pre-line';
+    els.jokerText.textContent = state.bankedJoker
+      ? 'Banked and ready. Use it as a wildcard in a play.'
+      : 'Draw a Joker and it banks automatically.';
+    els.jokerToggle.disabled = !state.bankedJoker || state.phase !== 'round';
+    els.jokerToggle.checked = !!(state.useJoker && state.bankedJoker);
+  }
+
+  function renderTokens() {
+    els.tokenList.innerHTML = '';
+    for (const [key, bonus] of Object.entries(BONUS)) {
+      const btn = document.createElement('button');
+      btn.className = `token-btn${key === 'doubleScore' && state.doubleArmed ? ' armed' : ''}`;
+      const owned = state.tokens[key];
+      btn.disabled = !owned || state.phase !== 'round' || (key === 'doubleScore' && state.doubleArmed);
+      if (key === 'shield' && owned && state.phase === 'round') btn.disabled = false;
+      btn.innerHTML = `
+        <span><strong>${bonus.name}</strong><span class="token-desc">${bonus.desc}</span></span>
+        <span class="owned-dot">${key === 'doubleScore' && state.doubleArmed ? '⚡' : owned ? '●' : '○'}</span>`;
+      btn.addEventListener('click', () => useBonus(key));
+      els.tokenList.appendChild(btn);
+    }
+  }
+
+  function renderLog() {
+    els.gameLog.innerHTML = state.log.length
+      ? state.log.map(x => `<div class="log-entry">${x}</div>`).join('')
+      : '<div class="log-entry">Shuffle up and deal.</div>';
+  }
+
+  function renderShop() {
+    els.creditsValue.textContent = state.shopCredits;
+    els.shopGrid.innerHTML = '';
+    for (const [key, bonus] of Object.entries(BONUS)) {
+      const item = document.createElement('div');
+      item.className = 'shop-item';
+      const owned = state.tokens[key];
+      const boughtNow = state.shopBoughtThisVisit.has(key);
+      const canAfford = state.shopCredits >= bonus.cost;
+      item.innerHTML = `
+        <div>
+          <h4>${bonus.name}</h4>
+          <p>${bonus.desc}</p>
+          <div class="cost">Cost: ${bonus.cost}</div>
+        </div>`;
+      const btn = document.createElement('button');
+      btn.className = `shop-btn${owned ? ' bought' : ''}`;
+      btn.textContent = boughtNow ? `Refund +${bonus.cost}` : owned ? 'Owned' : `Buy ${bonus.cost}`;
+      btn.disabled = (owned && !boughtNow) || (!owned && !canAfford);
+      btn.addEventListener('click', () => buyBonus(key));
+      item.appendChild(btn);
+      els.shopGrid.appendChild(item);
+    }
+  }
+
+  function openRules() { showOverlay(els.rulesOverlay, $('closeRulesBtn')); }
+  function closeRules() { hideOverlay(els.rulesOverlay); }
+
+  // Events
+  $('startBtn').addEventListener('click', startGame);
+  $('resumeBtn').addEventListener('click', resumeGame);
+  $('introRulesBtn').addEventListener('click', openRules);
+  $('rulesBtn').addEventListener('click', openRules);
+  $('closeRulesBtn').addEventListener('click', closeRules);
+  $('closeRulesBtn2').addEventListener('click', closeRules);
+  $('gameOverRulesBtn').addEventListener('click', openRules);
+  $('playAgainBtn').addEventListener('click', startGame);
+  $('nextRoundBtn').addEventListener('click', nextRound);
+  $('undoBtn').addEventListener('click', undoLastAction);
+  $('undoBtnTop').addEventListener('click', undoLastAction);
+  $('playBtn').addEventListener('click', playHand);
+  $('discardBtn').addEventListener('click', discardCards);
+  $('bestHandBtn').addEventListener('click', bestSelection);
+  $('sortRankBtn').addEventListener('click', () => sortHand('rank'));
+  $('sortSuitBtn').addEventListener('click', () => sortHand('suit'));
+  $('clearBtn').addEventListener('click', () => { state.selected.clear(); state.useJoker = false; renderHand(); renderJoker(); renderPreview(); announce('Selection cleared.'); });
+  $('jokerToggle').addEventListener('change', (e) => { state.useJoker = e.target.checked; beep('tap'); renderPreview(); });
+  if (els.mobilePocketToggle && els.sidePanel) {
+    els.mobilePocketToggle.addEventListener('click', () => {
+      const open = els.sidePanel.classList.toggle('mobile-open');
+      els.mobilePocketToggle.setAttribute('aria-expanded', String(open));
+      announce(open ? 'Power-ups drawer opened.' : 'Power-ups drawer closed.');
+      beep('tap');
+    });
+  }
+  $('restartBtn').addEventListener('click', () => {
+    if (state.phase === 'intro' || confirm('Start a new Solatro run? Your current run will be lost.')) startGame();
+  });
+  $('soundBtn').addEventListener('click', () => {
+    soundOn = !soundOn;
+    try { localStorage.setItem('solatroSound', soundOn ? 'on' : 'off'); } catch (_) {}
+    els.soundBtn.textContent = soundOn ? '♪' : '×';
+    els.soundBtn.title = soundOn ? 'Sound on' : 'Sound off';
+    if (soundOn) beep('tap');
+  });
+  els.soundBtn.textContent = soundOn ? '♪' : '×';
+
+  document.addEventListener('keydown', (e) => {
+    trapModalTab(e);
+    if (e.key === 'Escape' && !els.rulesOverlay.classList.contains('hidden')) { e.preventDefault(); closeRules(); return; }
+    if (e.key === 'Escape' && els.sidePanel?.classList.contains('mobile-open')) {
+      e.preventDefault();
+      els.sidePanel.classList.remove('mobile-open');
+      els.mobilePocketToggle?.setAttribute('aria-expanded', 'false');
+      els.mobilePocketToggle?.focus();
+      return;
+    }
+    const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '');
+    if (typing || state.phase !== 'round' || !els.rulesOverlay.classList.contains('hidden')) return;
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undoLastAction(); return; }
+    if (e.key.toLowerCase() === 'u') { e.preventDefault(); undoLastAction(); }
+    if (e.key.toLowerCase() === 'p') { e.preventDefault(); playHand(); }
+    if (e.key.toLowerCase() === 'd') { e.preventDefault(); discardCards(); }
+    if (e.key.toLowerCase() === 'h') { e.preventDefault(); bestSelection(); }
+  });
+
+  // Initial screen
+  els.bestRoundIntro.textContent = getBestRound();
+  updateResumeButton();
+  syncModalState();
+  requestAnimationFrame(() => $('startBtn')?.focus());
+  render();
+})();
+</script>
+</body>
+</html>
