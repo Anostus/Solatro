@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="theme-color" content="#f7f4ed" />
+<title>SOLATRO Player Aid</title>
+<style>
+  :root{--paper:#f7f4ed;--ink:#111;--muted:#787878;--line:#171717;--coin:#f7f4ed;--shadow:rgba(0,0,0,.14)}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#dedbd3;color:var(--ink);font-family:"Comic Sans MS","Segoe Print","Bradley Hand",cursive;-webkit-tap-highlight-color:transparent}
+  body{min-height:100vh}
+  button,input,select{font:inherit}
+  .app{min-height:100vh;display:flex;flex-direction:column}
+  .topbar{position:sticky;top:0;z-index:20;background:rgba(247,244,237,.96);backdrop-filter:blur(8px);border-bottom:2px solid #111;padding:8px max(8px,env(safe-area-inset-right)) 8px max(8px,env(safe-area-inset-left));display:flex;gap:8px;align-items:center;overflow-x:auto}
+  .brand{font-size:20px;font-weight:900;letter-spacing:2px;white-space:nowrap;margin-right:2px}
+  .navbtn{border:2px solid #111;background:white;border-radius:14px;padding:7px 11px;white-space:nowrap;box-shadow:2px 2px 0 #111;cursor:pointer}
+  .navbtn.active{background:#111;color:white;box-shadow:none;transform:translate(2px,2px)}
+  .topbar-spacer{flex:1}
+  .fsbtn{border:2px solid #111;background:white;border-radius:14px;padding:7px 10px;white-space:nowrap;box-shadow:2px 2px 0 #111;cursor:pointer;font-family:system-ui,sans-serif;font-weight:800}
+  .fsbtn:active{box-shadow:none;transform:translate(2px,2px)}
+  main{flex:1;padding:10px 10px calc(16px + env(safe-area-inset-bottom));max-width:1200px;width:100%;margin:0 auto}
+  .view{display:none}.view.active{display:block}
+  .page{background:var(--paper);border:2px solid #111;border-radius:12px;box-shadow:5px 6px 0 rgba(0,0,0,.2);padding:18px;position:relative;overflow:hidden}
+  .page h1,.page h2{font-weight:900;letter-spacing:4px;text-align:center;text-transform:uppercase;margin:.1em 0 .35em;line-height:1.05}
+  .page h1{font-size:clamp(32px,8vw,60px)}.page h2{font-size:clamp(28px,7vw,48px)}
+  .hand{letter-spacing:1px;font-weight:700}
+  .tiny{font-size:12px}.small{font-size:14px}.muted{opacity:.7}
+  .playmat{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:stretch}
+  .playmat .page{min-height:calc(100vh - 90px)}
+  @media(max-width:760px){.playmat{grid-template-columns:1fr}.playmat .page{min-height:auto}}
+  @media(max-width:760px) and (orientation:portrait){.playmat .page{min-height:calc(50vh - 60px)}}
+  .score-list{margin:8px 0 0;padding:0;list-style:none;font-size:clamp(20px,3.1vw,30px);font-weight:700}
+  .score-row{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;margin:8px 0;padding:5px 7px;border:2px solid transparent;border-radius:12px;cursor:pointer;user-select:none;transition:transform .08s ease,background .08s ease,border-color .08s ease}
+  .score-row:hover{border-color:#111;background:rgba(255,255,255,.55)}
+  .score-row:active{transform:scale(.985);background:#fff}
+  .score-row .tapadd{font-family:system-ui,sans-serif;font-size:10px;font-weight:800;opacity:.48;display:none}
+  @media(hover:none){.score-row .tapadd{display:inline}}
+  .squiggle{height:10px;min-width:30px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='10' viewBox='0 0 80 10'%3E%3Cpath d='M0 6 C8 0 12 10 20 5 S32 1 40 5 S52 9 60 4 S72 1 80 5' fill='none' stroke='%23111' stroke-width='2'/%3E%3C/svg%3E") repeat-x center/80px 10px}
+  .shop-grid{display:grid;grid-template-columns:1fr 1fr;border-top:3px solid #111;border-left:0;position:relative;margin-top:8px}
+  .shop-grid:after{content:"";position:absolute;top:0;bottom:0;left:50%;width:3px;background:#111;transform:rotate(-1deg)}
+  .shop-item{min-height:170px;padding:10px 12px 14px;border-bottom:3px solid #111;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
+  .shop-item:nth-last-child(-n+2){border-bottom:0}
+  .shop-title{font-size:clamp(16px,2.2vw,22px);font-weight:800;text-align:center;line-height:1.05}
+  .doodle{width:100px;height:80px;display:flex;align-items:center;justify-content:center;font-size:62px;line-height:1;transform:rotate(-4deg)}
+  .effect{font-family:system-ui,sans-serif;font-size:11px;text-align:center;opacity:.62;line-height:1.25;max-width:170px}
+  .coinmark{position:absolute;right:8px;bottom:8px;width:48px;height:48px;border:3px solid #111;border-radius:50%;background:var(--coin);display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;font-weight:900;font-size:12px;box-shadow:3px 3px 0 rgba(0,0,0,.2);transform:rotate(7deg)}
+  .shop-item.owned .coinmark{background:#111;color:white}.shop-item.owned{background:rgba(0,0,0,.04)}
+  .shop-note{text-align:center;font-family:system-ui,sans-serif;font-size:12px;margin-top:8px}
+  .playmat-status{margin-top:14px;border-top:3px solid #111;padding-top:12px}
+  .playmat-status-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+  .statbox{background:#fff;border:2px solid #111;border-radius:12px;padding:8px 6px;text-align:center;font-family:system-ui,sans-serif;box-shadow:2px 2px 0 rgba(0,0,0,.14)}
+  .statbox .label{display:block;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;opacity:.58}
+  .statbox .number{display:block;font-size:clamp(22px,5vw,34px);font-weight:950;line-height:1.05}
+  .progress{height:13px;border:2px solid #111;border-radius:999px;overflow:hidden;background:#fff;margin:9px 0 7px}
+  .progress > span{display:block;height:100%;width:0;background:#111;transition:width .18s ease}
+  .playmat-message{text-align:center;font-family:system-ui,sans-serif;font-size:12px;font-weight:800;min-height:18px}
+  .quick-actions{display:flex;gap:7px;margin-top:8px}.quick-actions .pill{flex:1}
+  .toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translate(-50%,20px);opacity:0;pointer-events:none;background:#111;color:#fff;border:2px solid #fff;border-radius:999px;padding:9px 14px;font-family:system-ui,sans-serif;font-size:13px;font-weight:800;z-index:100;box-shadow:0 5px 18px rgba(0,0,0,.25);transition:opacity .16s ease,transform .16s ease;max-width:90vw;text-align:center}
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+  .shop-actions{display:flex;justify-content:center;gap:8px;margin-top:8px}.pill{border:2px solid #111;background:white;border-radius:999px;padding:7px 11px;font-family:system-ui,sans-serif;font-weight:700;cursor:pointer}
+  .rules-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+  .rule-page{min-height:520px}.rule-page p,.rule-page li{font-size:18px;font-weight:650;line-height:1.35}.rule-page ul{padding-left:1.25em}
+  .under{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px}
+  .tracker{display:grid;grid-template-columns:1.05fr .95fr;gap:10px}@media(max-width:780px){.tracker{grid-template-columns:1fr}}
+  .panel{background:var(--paper);border:2px solid #111;border-radius:12px;box-shadow:4px 5px 0 rgba(0,0,0,.18);padding:14px}
+  .panel h2{font-size:28px;letter-spacing:2px;text-transform:uppercase;text-align:center;margin:4px 0 12px}
+  .bigline{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 0;border-bottom:2px wavy #111;padding-bottom:7px}
+  .numctrl{display:flex;align-items:center;gap:8px}.roundnum{font-size:42px;font-weight:900;min-width:60px;text-align:center}
+  .roundbtn{width:42px;height:42px;border:2px solid #111;border-radius:50%;background:white;font-size:26px;font-family:system-ui,sans-serif;font-weight:800;cursor:pointer}
+  .target{font-size:34px;font-weight:900}
+  .hands{display:grid;gap:8px}.handrow{display:grid;grid-template-columns:72px 1fr 70px;gap:8px;align-items:center}
+  .handrow select,.handrow input,.pointsinput{width:100%;border:2px solid #111;border-radius:10px;background:#fff;padding:9px;font-family:system-ui,sans-serif;font-weight:700}
+  .scoretotal{font-size:42px;font-weight:900;text-align:center;border:3px solid #111;border-radius:18px;padding:8px;background:white}
+  .status{text-align:center;margin-top:8px;font-family:system-ui,sans-serif;font-weight:800;padding:8px;border:2px solid #111;border-radius:10px}
+  .counters{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.counter{border:2px solid #111;border-radius:12px;padding:10px;text-align:center}.counter .value{font-size:32px;font-weight:900}.counter button{border:0;background:transparent;font-size:26px;cursor:pointer}
+  .tokenstrip{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}.token{border:2px solid #111;border-radius:12px;padding:8px;background:white;display:flex;align-items:center;justify-content:space-between;gap:8px;font-family:system-ui,sans-serif;font-size:13px;font-weight:700}.token.on{background:#111;color:#fff}.token button{border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;width:100%;text-align:left}
+  .actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.action{flex:1 1 120px;border:2px solid #111;border-radius:12px;background:white;padding:10px;font-family:system-ui,sans-serif;font-weight:800;cursor:pointer}.danger{background:#111;color:#fff}
+  .history{margin-top:10px;font-family:system-ui,sans-serif;font-size:13px;border-top:2px solid #111;padding-top:8px}.histrow{display:grid;grid-template-columns:50px 70px 70px 1fr;gap:6px;padding:5px 0;border-bottom:1px dashed #999}
+  .metagrid{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;font-size:20px;font-weight:800;margin-top:15px}
+  .cover{text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:520px}.logo{font-size:clamp(56px,14vw,110px);font-weight:900;letter-spacing:2px;line-height:.9}.cardlogo{display:inline-block;border:5px solid #111;border-radius:6px;padding:8px 12px;transform:rotate(-4deg);margin:0 -4px}.sparkles{font-size:34px;letter-spacing:14px;margin:12px}.cover p{max-width:700px;font-size:clamp(18px,3vw,30px);font-weight:700;line-height:1.45}
+  .savehint{font-family:system-ui,sans-serif;font-size:11px;text-align:center;opacity:.55;margin-top:8px}
+  body.focus-mode .topbar{display:none}
+  body.focus-mode main{padding-top:max(8px,env(safe-area-inset-top))}
+  @media(max-width:760px){
+    main{padding-left:7px;padding-right:7px;padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+    .topbar{display:grid;grid-template-columns:auto 1fr auto;gap:6px;padding-top:max(7px,env(safe-area-inset-top));overflow:visible}
+    .brand{font-size:17px}.topbar-spacer{display:none}.fsbtn{grid-column:3;padding:6px 9px}
+    .navbtn{padding:7px 9px;font-size:13px;box-shadow:1px 1px 0 #111}
+    .navbtn[data-view="playmat"]{grid-column:1}.navbtn[data-view="tracker"]{grid-column:2}.navbtn[data-view="rules"]{grid-column:1}.navbtn[data-view="meta"]{grid-column:2}
+    .page{padding:12px;border-radius:10px;box-shadow:3px 4px 0 rgba(0,0,0,.18)}
+    .page h1{font-size:clamp(29px,10vw,44px);letter-spacing:2px}
+    .score-list{font-size:clamp(18px,5.3vw,24px)}.score-row{margin:3px 0;padding:5px}
+    .shop-item{min-height:142px;padding:8px 7px 10px}.doodle{height:62px;font-size:48px}.shop-title{font-size:15px}.effect{font-size:10px}.coinmark{width:42px;height:42px;font-size:10px}
+    .playmat-status{position:sticky;bottom:4px;z-index:8;background:rgba(247,244,237,.96);backdrop-filter:blur(7px);border:2px solid #111;border-radius:13px;padding:8px;box-shadow:0 -2px 12px rgba(0,0,0,.12);margin:10px -3px 0}
+    .playmat-status-grid{gap:4px}.statbox{padding:6px 3px}.statbox .number{font-size:22px}
+    .quick-actions .pill{padding:8px 6px;font-size:12px}
+    .tracker{gap:8px}.panel{padding:10px}.panel h2{font-size:23px}.handrow{grid-template-columns:58px 1fr 62px;gap:5px}.handrow select,.handrow input,.pointsinput{padding:8px 6px;font-size:13px}.roundnum,.scoretotal{font-size:34px}.target{font-size:27px}
+    .tokenstrip{grid-template-columns:1fr}.actions{gap:6px}.action{padding:9px;font-size:13px}
+  }
+  @media(max-width:390px){.brand{display:none}.topbar{grid-template-columns:1fr 1fr auto}.navbtn{font-size:12px}.score-row{grid-template-columns:minmax(115px,auto) 1fr auto}.shop-grid{grid-template-columns:1fr 1fr}}
+  @media(orientation:landscape) and (max-height:520px){.topbar{padding-top:4px;padding-bottom:4px}.navbtn,.fsbtn{padding-top:5px;padding-bottom:5px}.playmat .page{min-height:auto}.page h1{font-size:30px}.score-list{font-size:18px}.score-row{margin:1px 0;padding:3px 5px}.shop-item{min-height:118px}.doodle{height:45px;font-size:40px}.effect{display:none}.playmat-status{position:static}}
+
+  /* Mobile playmat: keep the entire aid visible without page scrolling. */
+  @media(max-width:900px){
+    body.playmat-mode{height:100dvh;overflow:hidden}
+    body.playmat-mode .app{height:100dvh;min-height:0;overflow:hidden}
+    body.playmat-mode main{flex:1;min-height:0;overflow:hidden;padding:5px 6px max(5px,env(safe-area-inset-bottom))}
+    body.playmat-mode #playmat{height:100%}
+    body.playmat-mode #playmat .playmat{height:100%;min-height:0;gap:6px}
+    body.playmat-mode #playmat .page{min-height:0;height:100%;padding:7px;border-radius:9px;box-shadow:2px 3px 0 rgba(0,0,0,.18);overflow:hidden}
+    body.playmat-mode #playmat .page h1{font-size:clamp(20px,6.2vw,30px);letter-spacing:1.5px;margin:0 0 3px}
+    body.playmat-mode #playmat .score-list{margin:0;font-size:clamp(12px,3.65vw,18px);line-height:1}
+    body.playmat-mode #playmat .score-row{margin:0;padding:2px 4px;gap:5px;min-height:0;border-width:1px;border-radius:7px}
+    body.playmat-mode #playmat .score-row .tapadd{font-size:7px}
+    body.playmat-mode #playmat .squiggle{height:6px;background-size:64px 8px}
+    body.playmat-mode #playmat .playmat-status{position:static;margin:3px 0 0;padding:4px 0 0;border:0;border-top:2px solid #111;border-radius:0;background:transparent;box-shadow:none;backdrop-filter:none}
+    body.playmat-mode #playmat .playmat-status-grid{gap:3px}
+    body.playmat-mode #playmat .statbox{padding:2px 3px;border-width:1px;border-radius:7px;box-shadow:none}
+    body.playmat-mode #playmat .statbox .label{font-size:7px}
+    body.playmat-mode #playmat .statbox .number{font-size:clamp(15px,4.4vw,21px)}
+    body.playmat-mode #playmat .progress{height:7px;border-width:1px;margin:3px 0}
+    body.playmat-mode #playmat .playmat-message{font-size:9px;min-height:0;line-height:1.05;margin:1px 0}
+    body.playmat-mode #playmat .quick-actions{gap:4px;margin-top:3px}
+    body.playmat-mode #playmat .quick-actions .pill{padding:3px 5px;border-width:1px;font-size:9px}
+    body.playmat-mode #playmat .shop-grid{margin-top:2px;border-top-width:2px;height:calc(100% - 54px);grid-template-rows:repeat(3,1fr)}
+    body.playmat-mode #playmat .shop-grid:after{width:2px}
+    body.playmat-mode #playmat .shop-item{min-height:0;height:auto;padding:3px 4px 4px;border-bottom-width:2px;justify-content:center;gap:1px}
+    body.playmat-mode #playmat .shop-title{font-size:clamp(10px,3vw,14px);line-height:1}
+    body.playmat-mode #playmat .doodle{width:auto;height:auto;min-height:22px;font-size:clamp(22px,7vw,34px)}
+    body.playmat-mode #playmat .effect{display:none}
+    body.playmat-mode #playmat .hand{font-size:8px;line-height:1}
+    body.playmat-mode #playmat .coinmark{right:3px;bottom:3px;width:27px;height:27px;border-width:2px;font-size:7px;box-shadow:1px 1px 0 rgba(0,0,0,.2)}
+    body.playmat-mode #playmat .shop-actions{position:absolute;right:7px;top:31px;margin:0;z-index:2}
+    body.playmat-mode #playmat .shop-actions .pill{padding:2px 6px;border-width:1px;font-size:8px;background:rgba(255,255,255,.9)}
+    body.playmat-mode #playmat .shop-note{display:none}
+  }
+  @media(max-width:900px) and (orientation:portrait){
+    body.playmat-mode #playmat .playmat{grid-template-columns:1fr;grid-template-rows:minmax(0,1.05fr) minmax(0,.95fr)}
+    body.playmat-mode #playmat .page{width:100%}
+  }
+  @media(max-width:900px) and (orientation:landscape){
+    body.playmat-mode .topbar{display:flex;flex-wrap:nowrap;overflow-x:auto;padding:3px max(5px,env(safe-area-inset-right)) 3px max(5px,env(safe-area-inset-left));gap:4px}
+    body.playmat-mode .brand{display:none}
+    body.playmat-mode .navbtn,body.playmat-mode .fsbtn{padding:3px 6px;font-size:10px;border-width:1px;border-radius:8px;box-shadow:1px 1px 0 #111}
+    body.playmat-mode #playmat .playmat{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:1fr}
+    body.playmat-mode #playmat .page h1{font-size:clamp(18px,4.6vh,28px)}
+    body.playmat-mode #playmat .score-list{font-size:clamp(11px,2.9vh,16px)}
+    body.playmat-mode #playmat .score-row{padding:1px 3px}
+    body.playmat-mode #playmat .playmat-status{display:grid;grid-template-columns:1.15fr 1fr;gap:3px 6px;align-items:center}
+    body.playmat-mode #playmat .playmat-status-grid{grid-column:1}
+    body.playmat-mode #playmat .progress{grid-column:2;grid-row:1}
+    body.playmat-mode #playmat .playmat-message{grid-column:1}
+    body.playmat-mode #playmat .quick-actions{grid-column:2;grid-row:2;margin:0}
+    body.playmat-mode #playmat .shop-grid{height:calc(100% - 43px)}
+    body.playmat-mode #playmat .shop-title{font-size:clamp(9px,2.5vh,13px)}
+    body.playmat-mode #playmat .doodle{font-size:clamp(18px,6vh,30px);min-height:16px}
+    body.playmat-mode #playmat .coinmark{width:24px;height:24px;font-size:6px}
+  }
+  @media(max-width:430px) and (orientation:portrait){
+    body.playmat-mode .topbar{display:flex;flex-wrap:nowrap;overflow-x:auto;padding:4px max(5px,env(safe-area-inset-right)) 4px max(5px,env(safe-area-inset-left));gap:4px}
+    body.playmat-mode .brand{display:none}
+    body.playmat-mode .navbtn,body.playmat-mode .fsbtn{padding:4px 6px;font-size:10px;border-width:1px;border-radius:8px;box-shadow:1px 1px 0 #111}
+    body.playmat-mode .topbar-spacer{display:none}
+    body.playmat-mode .navbtn{font-size:0}
+    body.playmat-mode .navbtn::after{font-size:10px}
+    body.playmat-mode .navbtn[data-view="playmat"]::after{content:"Playmat"}
+    body.playmat-mode .navbtn[data-view="tracker"]::after{content:"Score"}
+    body.playmat-mode .navbtn[data-view="rules"]::after{content:"Rules"}
+    body.playmat-mode .navbtn[data-view="meta"]::after{content:"Meta"}
+    body.playmat-mode .fsbtn{font-size:0;min-width:30px}
+    body.playmat-mode .fsbtn::after{content:"⛶";font-size:14px}
+  }
+
+</style>
+</head>
+<body class="playmat-mode">
+<div class="app">
+  <div class="topbar">
+    <div class="brand">SOLATRO</div>
+    <button class="navbtn active" data-view="playmat">Playmat</button>
+    <button class="navbtn" data-view="tracker">Rounds + Score</button>
+    <button class="navbtn" data-view="rules">Rules</button>
+    <button class="navbtn" data-view="meta">Metagame</button>
+    <div class="topbar-spacer"></div>
+    <button class="fsbtn" id="fullscreenBtn" aria-label="Toggle full screen">⛶ Full screen</button>
+  </div>
+  <main>
+    <section id="playmat" class="view active">
+      <div class="playmat">
+        <article class="page" aria-label="Hand Scores">
+          <h1>Hand Scores</h1>
+          <ul class="score-list" id="handScores"></ul>
+          <div class="playmat-status" aria-live="polite">
+            <div class="playmat-status-grid">
+              <div class="statbox"><span class="label">Round</span><span class="number" id="pmRound">1</span></div>
+              <div class="statbox"><span class="label">Target</span><span class="number" id="pmTarget">25</span></div>
+              <div class="statbox"><span class="label">Score</span><span class="number" id="pmScore">0</span></div>
+            </div>
+            <div class="progress" aria-hidden="true"><span id="pmProgress"></span></div>
+            <div class="playmat-message" id="pmMessage">Tap a hand above to score it.</div>
+            <div class="quick-actions"><button class="pill" id="undoPlay">Undo play</button><button class="pill" id="nextRoundQuick">Complete round</button></div>
+          </div>
+        </article>
+        <article class="page" aria-label="Bonus Shoppe">
+          <h1>Bonus Shoppe</h1>
+          <div class="shop-grid" id="shopGrid"></div>
+          <div class="shop-actions"><button class="pill" id="clearShop">Clear coins</button></div>
+          <div class="shop-note">Tap a shop item to place/remove a coin marker. The marker is just a physical-style reminder; your game state is saved on this device.</div>
+        </article>
+      </div>
+    </section>
+
+    <section id="tracker" class="view">
+      <div class="tracker">
+        <div class="panel">
+          <h2>Round Tracker</h2>
+          <div class="bigline"><b>ROUND</b><div class="numctrl"><button class="roundbtn" id="roundDown">−</button><div class="roundnum" id="roundNum">1</div><button class="roundbtn" id="roundUp">+</button></div></div>
+          <div class="bigline"><b>TARGET</b><div class="target"><span id="targetNum">25</span> pts</div></div>
+          <div class="hands" id="handRows"></div>
+          <div class="bigline"><b>TOTAL</b><div class="scoretotal" id="scoreTotal">0</div></div>
+          <div class="status" id="roundStatus">Need 25 more points</div>
+          <div class="counters">
+            <div class="counter"><b>Plays used</b><div><button data-counter="plays" data-delta="-1">−</button><span class="value" id="playsUsed">0</span><button data-counter="plays" data-delta="1">+</button></div><span class="small muted" id="playsLimitHint">limit 3</span></div>
+            <div class="counter"><b>Discards used</b><div><button data-counter="discards" data-delta="-1">−</button><span class="value" id="discardsUsed">0</span><button data-counter="discards" data-delta="1">+</button></div><span class="small muted" id="discardsLimitHint">limit 3</span></div>
+          </div>
+          <div class="actions">
+            <button class="action" id="addPocket">+25 Pocket Points</button>
+            <button class="action" id="doubleNext">Double next hand: OFF</button>
+            <button class="action danger" id="completeRound">Complete round</button>
+          </div>
+        </div>
+        <div class="panel">
+          <h2>Tokens + Notes</h2>
+          <div class="tokenstrip" id="tokenStrip"></div>
+          <div class="bigline"><b>BANKED JOKER</b><button class="pill" id="jokerToggle">No</button></div>
+          <label class="small"><b>Manual bonus / adjustment</b><input id="manualBonus" class="pointsinput" type="number" inputmode="numeric" value="0" step="5"></label>
+          <div class="history" id="history"></div>
+          <div class="actions"><button class="action" id="resetGame">Reset tracker</button></div>
+          <div class="savehint">Tracker state is stored in your browser using localStorage.</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="rules" class="view">
+      <div class="rules-grid">
+        <article class="page cover">
+          <div class="sparkles">✶ ⟲ ✦ ✣ ☆</div>
+          <div class="logo">SOL<span class="cardlogo">A♠</span>TRO</div>
+          <p><span class="under">EVERYONE</span> loves that popular addictive computer card game, and <span class="under">EVERYONE</span> loves solitaire (obviously), so here’s a cheeky way to play a SOLO version with a regular deck of cards.</p>
+        </article>
+        <article class="page rule-page"><h2>Goal</h2><p>Survive as many rounds as possible by reaching the score target for each round. Targets go up each round, and you use poker hands to earn points toward that target.</p><h2>Setup</h2><ul><li>Use a standard 54-card deck (including 2 Jokers).</li><li>Shuffle the deck.</li><li>Track round number, score and owned bonus tokens.</li></ul></article>
+        <article class="page rule-page"><h2>Round Structure</h2><ul><li>Round 1 target: <b>25 points.</b></li><li>Each new round increases the target by <b>+25</b>.</li><li>Draw <b>8 cards</b>.</li><li>You get <span class="under">3 plays</span> and <span class="under">3 discard chances</span>.</li><li>Discard 1–5 cards each time.</li><li>After a play or discard, draw back to your hand limit.</li><li>At round end, shuffle hand cards and discards back into the deck.</li></ul></article>
+        <article class="page rule-page"><h2>Playing Cards</h2><ul><li>On each play, choose up to 5 cards to make a poker hand and record its score.</li><li>Cards played are set aside until the next round.</li><li>After 3 plays, total the scores.</li><li>Meet or beat the target to advance. Otherwise, without a Shield, you <b class="under">DIE!</b></li></ul><h2>Bonus Shoppe</h2><ul><li>Excess points beyond the target may be spent after the round.</li><li>You can only own 1 of each bonus at a time.</li><li>Bonus items carry over, points do not.</li></ul></article>
+        <article class="page rule-page"><h2>Jokers</h2><ul><li>Jokers are wildcards.</li><li>If drawn, <span class="under">bank it</span> and draw a replacement.</li><li>A banked Joker can join a future play as a wildcard; when used, discard it.</li><li>If you already have a banked Joker and another appears, you lose <b>BOTH!</b></li></ul><h2>Losing</h2><p>The game ends when you fail to meet the round target and have no Shield token. Your score is the last round number you reached.</p></article>
+      </div>
+    </section>
+
+    <section id="meta" class="view">
+      <article class="page" style="max-width:760px;margin:0 auto;min-height:540px">
+        <h1>Metagame</h1>
+        <p class="hand" style="text-align:center;font-size:24px">Think you’re good, DO YA?<br>Try to hit these milestones!</p>
+        <div class="metagrid"><b>RANK</b><span></span><b>ROUNDS</b><span>Cat Food</span><span class="squiggle"></span><span>3</span><span>Little Dweeb</span><span class="squiggle"></span><span>5</span><span>Official Dweeb</span><span class="squiggle"></span><span>7</span><span>Ultra Mega Uber Giga-Dweeb</span><span class="squiggle"></span><span>10+</span></div>
+        <div style="font-size:90px;text-align:center;margin-top:25px;transform:rotate(-4deg)">🃏  🂡🂥🂪</div>
+        <p class="hand" style="font-size:23px;transform:rotate(-3deg)">Hope you had fun!<br>—TechDweeb</p>
+      </article>
+    </section>
+  </main>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script>
+const HANDS=[['High Card',5],['Pair',10],['Two Pair',20],['Three of a Kind',30],['Straight',40],['Flush',50],['Full House',60],['Four of a Kind',100],['Straight Flush',125],['Royal Flush',150]];
+const SHOP=[
+  {id:'extraCard',name:'Extra Card',cost:10,effect:'+1 card in your hand this round',icon:'🂡'},
+  {id:'extraDiscard',name:'Extra Discard',cost:25,effect:'+1 discard opportunity for this round',icon:'🗑️'},
+  {id:'pocket',name:'Pocket Points',cost:50,effect:'Add 25 points to your score this round',icon:'25'},
+  {id:'extraHand',name:'Extra Hand',cost:75,effect:'Play one extra hand this round',icon:'☝'},
+  {id:'double',name:'Double Score',cost:100,effect:'Double the points from your next play',icon:'2×'},
+  {id:'shield',name:'Shield',cost:150,effect:'Ignore one failed round (advance anyway)',icon:'◉'}
+];
+const DEFAULT={round:1,hands:[0,0,0,0],plays:0,discards:0,pocket:0,manual:0,doubleNext:false,joker:false,tokens:{},activeBonuses:{extraHand:0,extraDiscard:0,shield:false},history:[]};
+let state=load();
+function load(){try{const saved=JSON.parse(localStorage.getItem('solatroAid')||'{}');const out=Object.assign(structuredClone(DEFAULT),saved);out.tokens=Object.assign({},DEFAULT.tokens,saved.tokens||{});out.activeBonuses=Object.assign({},DEFAULT.activeBonuses,saved.activeBonuses||{});return out}catch(e){return structuredClone(DEFAULT)}}
+function save(){localStorage.setItem('solatroAid',JSON.stringify(state))}
+function showView(id){document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===id));document.querySelectorAll('.navbtn').forEach(b=>b.classList.toggle('active',b.dataset.view===id));document.body.classList.toggle('playmat-mode',id==='playmat');window.scrollTo({top:0,behavior:'smooth'})}
+document.querySelectorAll('.navbtn').forEach(b=>b.onclick=()=>showView(b.dataset.view));
+
+function renderHandScores(){const ul=document.getElementById('handScores');ul.innerHTML=HANDS.map(([n,p])=>`<li class="score-row" role="button" tabindex="0" data-points="${p}" data-name="${n}" aria-label="Add ${n}, ${p} points"><span>${n}<small class="tapadd"> TAP</small></span><span class="squiggle"></span><span>${p}</span></li>`).join('');ul.querySelectorAll('.score-row').forEach(row=>{const add=()=>addHandFromPlaymat(row.dataset.name,Number(row.dataset.points));row.onclick=add;row.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();add()}}})}
+let toastTimer;
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),1500);if(navigator.vibrate)navigator.vibrate(20)}
+function playLimit(){return 3+Number(state.activeBonuses?.extraHand||0)}
+function discardLimit(){return 3+Number(state.activeBonuses?.extraDiscard||0)}
+function addHandFromPlaymat(name,points){const limit=playLimit();let i=state.hands.slice(0,limit).findIndex(v=>!Number(v));if(i<0){toast(`All ${limit} plays are filled — undo or complete the round.`);return}let scored=points;if(state.doubleNext){scored*=2;state.doubleNext=false;state.tokens.double=false}state.hands[i]=scored;state.plays=Math.max(state.plays||0,i+1);save();renderShop();renderTracker();toast(`${name}: +${scored}${scored!==points?' (doubled)':''}`)}
+function undoLastPlay(){const limit=playLimit();for(let i=limit-1;i>=0;i--){if(Number(state.hands[i])){const removed=state.hands[i];state.hands[i]=0;state.plays=Math.min(state.plays||0,i);save();renderTracker();toast(`Removed ${removed} points`);return}}toast('No scored play to undo')}
+function renderPlaymatStatus(){const target=state.round*25,score=total(),diff=score-target,remaining=Math.max(0,playLimit()-(state.plays||0));document.getElementById('pmRound').textContent=state.round;document.getElementById('pmTarget').textContent=target;document.getElementById('pmScore').textContent=score;document.getElementById('pmProgress').style.width=Math.min(100,Math.max(0,score/target*100))+'%';document.getElementById('pmMessage').textContent=(diff>=0?`Target met — ${diff} excess point${diff===1?'':'s'}. `:`Need ${-diff} more point${-diff===1?'':'s'}. `)+`${remaining} play${remaining===1?'':'s'} left.`}
+function useBonus(id){const item=SHOP.find(x=>x.id===id);if(!item)return false;if(!confirm(`Use ${item.name} now?\n\n${item.effect}`))return false;state.tokens[id]=false;switch(id){case 'pocket':state.pocket=(state.pocket||0)+25;toast('Pocket Points used: +25 score');break;case 'double':state.doubleNext=true;toast('Double Score armed for your next play');break;case 'extraHand':state.activeBonuses.extraHand=1;toast('Extra Hand active: 1 additional play this round');break;case 'extraDiscard':state.activeBonuses.extraDiscard=1;toast('Extra Discard active: 1 additional discard this round');break;case 'shield':state.activeBonuses.shield=true;toast('Shield armed for this round');break;case 'extraCard':toast('Extra Card used — remember your +1 card hand limit this round');break;}save();renderShop();renderTracker();return true}
+function toggleShopToken(id){if(state.tokens[id]){useBonus(id)}else{state.tokens[id]=true;save();renderShop();renderTokens();toast(`${SHOP.find(x=>x.id===id)?.name||'Bonus'} acquired`)}}
+function renderShop(){const g=document.getElementById('shopGrid');g.innerHTML=SHOP.map(x=>`<div class="shop-item ${state.tokens[x.id]?'owned':''}" data-id="${x.id}"><div class="shop-title">${x.name}: ${x.cost}</div><div class="doodle">${x.icon}</div>${x.id==='pocket'?'<div class="hand">(Cash in for 25)</div>':''}<div class="effect">${x.effect}</div><div class="coinmark">${state.tokens[x.id]?'OWNED':'COIN'}</div></div>`).join('');g.querySelectorAll('.shop-item').forEach(el=>el.onclick=()=>toggleShopToken(el.dataset.id))}
+document.getElementById('clearShop').onclick=()=>{state.tokens={};save();renderShop();renderTokens()};
+
+function handOptions(){return `<option value="0">Choose hand…</option>`+HANDS.map(([n,p])=>`<option value="${p}">${n} (${p})</option>`).join('')}
+function renderHandRows(){const rows=document.getElementById('handRows');const count=playLimit();rows.innerHTML='';for(let i=0;i<count;i++){const v=state.hands[i]||0;const row=document.createElement('div');row.className='handrow';row.innerHTML=`<b>PLAY ${i+1}</b><select data-i="${i}">${handOptions()}</select><input data-i="${i}" type="number" inputmode="numeric" min="0" step="5" value="${v}" aria-label="Score for play ${i+1}">`;const sel=row.querySelector('select');sel.value=HANDS.some(h=>h[1]===v)?String(v):'0';sel.onchange=e=>{state.hands[i]=Number(e.target.value);save();renderTracker()};row.querySelector('input').oninput=e=>{state.hands[i]=Math.max(0,Number(e.target.value)||0);save();renderTracker(false)};rows.appendChild(row)}}
+function total(){const count=playLimit();return state.hands.slice(0,count).reduce((a,b)=>a+(Number(b)||0),0)+Number(state.pocket||0)+Number(state.manual||0)}
+function renderTracker(rebuild=true){if(rebuild)renderHandRows();document.getElementById('roundNum').textContent=state.round;const target=state.round*25;document.getElementById('targetNum').textContent=target;document.getElementById('scoreTotal').textContent=total();document.getElementById('playsUsed').textContent=state.plays;document.getElementById('discardsUsed').textContent=state.discards;document.getElementById('playsLimitHint').textContent=`limit ${playLimit()}`;document.getElementById('discardsLimitHint').textContent=`limit ${discardLimit()}`;document.getElementById('jokerToggle').textContent=state.joker?'Banked':'No';document.getElementById('jokerToggle').style.background=state.joker?'#111':'white';document.getElementById('jokerToggle').style.color=state.joker?'white':'#111';document.getElementById('manualBonus').value=state.manual||0;document.getElementById('doubleNext').textContent='Double next hand: '+(state.doubleNext?'ON':'OFF');const diff=total()-target,remaining=Math.max(0,playLimit()-(state.plays||0));const status=document.getElementById('roundStatus');status.textContent=(diff>=0?`Target met! ${diff} excess point${diff===1?'':'s'}. `:`Need ${-diff} more point${-diff===1?'':'s'}. `)+`${remaining} play${remaining===1?'':'s'} left`;renderTokens();renderHistory();renderPlaymatStatus()}
+function renderTokens(){const s=document.getElementById('tokenStrip');s.innerHTML=SHOP.map(x=>`<div class="token ${state.tokens[x.id]?'on':''}"><button data-id="${x.id}">${x.name}</button><span>${state.tokens[x.id]?'✓':'○'}</span></div>`).join('');s.querySelectorAll('button').forEach(b=>b.onclick=()=>toggleShopToken(b.dataset.id))}
+function renderHistory(){const h=document.getElementById('history');h.innerHTML='<b>ROUND HISTORY</b>'+ (state.history.length?state.history.slice().reverse().map(x=>`<div class="histrow"><b>R${x.round}</b><span>${x.score}/${x.target}</span><span>${x.excess>=0?'+'+x.excess:x.excess}</span><span>${x.result}</span></div>`).join(''):'<div class="small muted" style="padding:8px 0">No completed rounds yet.</div>')}
+
+document.getElementById('roundDown').onclick=()=>{state.round=Math.max(1,state.round-1);save();renderTracker()};
+document.getElementById('roundUp').onclick=()=>{state.round++;save();renderTracker()};
+document.querySelectorAll('[data-counter]').forEach(b=>b.onclick=()=>{const k=b.dataset.counter;const next=Math.max(0,state[k]+Number(b.dataset.delta));state[k]=k==='discards'?Math.min(discardLimit(),next):k==='plays'?Math.min(playLimit(),next):next;save();renderTracker(false)});
+document.getElementById('jokerToggle').onclick=()=>{state.joker=!state.joker;save();renderTracker(false)};
+document.getElementById('manualBonus').oninput=e=>{state.manual=Number(e.target.value)||0;save();renderTracker(false)};
+document.getElementById('addPocket').onclick=()=>{state.pocket=(state.pocket||0)+25;state.tokens.pocket=false;save();renderShop();renderTracker()};
+document.getElementById('doubleNext').onclick=()=>{state.doubleNext=!state.doubleNext;save();renderTracker(false)};
+document.getElementById('completeRound').onclick=()=>{const t=state.round*25,s=total(),ex=s-t;let result='advance';if(ex<0){if(state.activeBonuses.shield||state.tokens.shield){result='shield used';state.activeBonuses.shield=false;state.tokens.shield=false}else result='failed'}state.history.push({round:state.round,target:t,score:s,excess:ex,result});if(result!=='failed')state.round++;state.hands=[0,0,0,0];state.plays=0;state.discards=0;state.pocket=0;state.manual=0;state.doubleNext=false;state.activeBonuses={extraHand:0,extraDiscard:0,shield:false};save();renderShop();renderTracker()};
+document.getElementById('undoPlay').onclick=undoLastPlay;
+document.getElementById('nextRoundQuick').onclick=()=>document.getElementById('completeRound').click();
+const fullscreenBtn=document.getElementById('fullscreenBtn');
+function isFullscreen(){return !!(document.fullscreenElement||document.webkitFullscreenElement)}
+function updateFullscreenButton(){fullscreenBtn.textContent=isFullscreen()?'↙ Exit full screen':(document.body.classList.contains('focus-mode')?'↙ Exit focus':'⛶ Full screen')}
+async function toggleFullscreen(){try{if(isFullscreen()){if(document.exitFullscreen)await document.exitFullscreen();else if(document.webkitExitFullscreen)document.webkitExitFullscreen()}else{const root=document.documentElement;if(root.requestFullscreen)await root.requestFullscreen({navigationUI:'hide'});else if(root.webkitRequestFullscreen)root.webkitRequestFullscreen();else{document.body.classList.toggle('focus-mode');toast(document.body.classList.contains('focus-mode')?'Focus mode on':'Focus mode off')}}}catch(e){document.body.classList.toggle('focus-mode');toast(document.body.classList.contains('focus-mode')?'Focus mode on':'Focus mode off')}updateFullscreenButton()}
+fullscreenBtn.onclick=toggleFullscreen;document.addEventListener('fullscreenchange',updateFullscreenButton);document.addEventListener('webkitfullscreenchange',updateFullscreenButton);
+document.getElementById('resetGame').onclick=()=>{if(confirm('Reset round tracker and all saved state?')){state=structuredClone(DEFAULT);save();renderShop();renderTracker()}};
+renderHandScores();renderShop();renderTracker();
+</script>
+</body>
+</html>
